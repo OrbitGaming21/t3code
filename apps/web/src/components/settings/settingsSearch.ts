@@ -261,6 +261,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["red green blue orange additions deletions changes counts palette colorblind"],
   },
   {
+    id: "usage-display",
+    title: "Usage bar & menu",
+    to: "/settings/appearance",
+    targetId: "usage-display",
+    searchTerms: ["bottom", "menu bar", "size", "layout", "order", "visibility"],
+  },
+  {
     id: "chat-width",
     title: "Chat width",
     to: "/settings/appearance",
@@ -718,6 +725,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     to: "/settings/providers",
     searchTerms: ["refresh availability versions auth state models background probes seconds off"],
     providerSettingsOnly: true,
+  },
+  {
+    id: "connected-apps",
+    title: "Connected apps",
+    searchTerms: ["oauth mcp plugins apps sign in tools"],
+    to: "/settings/integrations",
   },
   {
     id: "agent-browser-access",

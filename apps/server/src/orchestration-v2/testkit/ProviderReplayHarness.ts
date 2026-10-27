@@ -1,3 +1,4 @@
+import * as PromptUsageBudget from "../../usage/PromptUsageBudget.ts";
 import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -376,6 +377,13 @@ export function layerWithRegistry<Error>(
     Layer.provide(layerProvidedRegistry),
   );
   const layerRunExecutionServiceProvided = RunExecutionService.layer.pipe(
+    Layer.provide(
+      Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        begin: () => Effect.void,
+        end: () => Effect.void,
+        poll: Effect.succeed([]),
+      }),
+    ),
     Layer.provide(
       Layer.mergeAll(
         McpAppModelContext.layerEmpty,

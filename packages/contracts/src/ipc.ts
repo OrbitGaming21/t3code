@@ -12,7 +12,13 @@ import type {
 import { AuthAccessTokenResult, AuthSessionState, AuthWebSocketTicketResult } from "./auth.ts";
 import { AdvertisedEndpoint } from "./remoteAccess.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
-import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from "./settings.ts";
+import {
+  type ClientSettings,
+  type QuitConfirmationMode,
+  SnapShotShortcut,
+  UsageDisplaySettingsSchema,
+  UsageDisplaySection,
+} from "./settings.ts";
 import type { EditorId } from "./editor.ts";
 import type { PreviewForwardedShortcut } from "./keybindings.ts";
 
@@ -1002,6 +1008,26 @@ export const DesktopPreviewRecordingSaveInputSchema = Schema.Struct({
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
+export const DesktopMenuBarSummarySchema = Schema.Struct({
+  display: Schema.optionalKey(UsageDisplaySettingsSchema),
+  environmentLabel: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+  theme: Schema.optionalKey(Schema.Literals(["light", "dark"])),
+  items: Schema.Array(
+    Schema.Struct({
+      label: Schema.String.check(Schema.isMaxLength(200)),
+      action: Schema.Literals(["open-usage", "open-scheduled-tasks"]),
+      section: Schema.optionalKey(UsageDisplaySection),
+      value: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+      detail: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+      reset: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+      usedPercent: Schema.optionalKey(
+        Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
+      ),
+    }),
+  ).check(Schema.isMaxLength(24)),
+});
+export type DesktopMenuBarSummary = typeof DesktopMenuBarSummarySchema.Type;
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled?: () => boolean;
@@ -1009,9 +1035,7 @@ export interface DesktopBridge {
   getClientPlatform?: () => string;
   setNotificationBadge?: (badge: { count: number; image: string | null }) => Promise<void>;
   /** macOS menu bar dropdown; other platforms ignore it. */
-  setMenuBarSummary?: (summary: {
-    items: readonly { label: string; action: "open-usage" | "open-scheduled-tasks" }[];
-  }) => Promise<void>;
+  setMenuBarSummary?: (summary: DesktopMenuBarSummary) => Promise<void>;
   onNotificationBadgeClear?: (listener: () => void) => () => void;
   onTrackpadScrollEnd?: (listener: () => void) => () => void;
   /**

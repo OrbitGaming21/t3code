@@ -213,3 +213,15 @@ it.effect("keys terminal failure items by provider turn across retries and fallb
     assert.equal(firstAttempt.ordinal, 101);
   }).pipe(Effect.provide(IdAllocator.layer)),
 );
+
+it("preserves the actionable reason a subscription budget prevents startup", () => {
+  assert.equal(
+    makeProviderFailure({
+      cause: {
+        _tag: "PromptUsageBudgetError",
+        message: "The per-prompt subscription budget is 0%.",
+      },
+    }).message,
+    "The per-prompt subscription budget is 0%.",
+  );
+});

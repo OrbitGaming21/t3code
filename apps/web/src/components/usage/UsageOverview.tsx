@@ -1,4 +1,7 @@
-import { ScheduledUsageCeiling } from "./ScheduledUsageCeiling";
+import { UsageDisplaySettingsMenu } from "./UsageDisplaySettings";
+import { cn } from "../../lib/utils";
+import type { UsageDisplaySection, UsageDisplaySettings } from "@t3tools/contracts";
+import { PromptUsageBudgetSettings } from "./PromptUsageBudgetSettings";
 import { mergeUsage } from "@t3tools/shared/usageMerge";
 import { USAGE_CONTRACT_VERSION } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
@@ -7,13 +10,18 @@ import {
   AuthDiagnosticsReadScope,
   AuthOrchestrationReadScope,
   type EnvironmentId,
+  type ServerProviderUsageWindow,
+  type TimestampFormat,
+  type DesktopMenuBarSummary,
 } from "@t3tools/contracts";
 import { formatTokens, makeWindow } from "@t3tools/shared/usageFormat";
-import { collectLimitAccounts, limitsNotice } from "@t3tools/shared/usageLimits";
+import { collectLimitAccounts, formatResetsIn, limitsNotice } from "@t3tools/shared/usageLimits";
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect } from "react";
-import type { DesktopBridge } from "@t3tools/contracts";
 
+import { useRenderedAppearance } from "../../hooks/useTheme";
+import { useClientSettings, usePrimarySettings } from "../../hooks/useSettings";
+import { formatUpcomingTimestamp } from "../../timestampFormat";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
 import { useThreadRouteTarget } from "../../hooks/useThreadRouteTarget";
@@ -45,13 +53,33 @@ export function UsageOverviewMenu() {
 }
 
 export function UsageOverviewFooter() {
+  const display = useClientSettings((settings) => settings.usageDisplay);
+  const heights = { compact: "h-28", comfortable: "h-36", large: "h-44" };
   return (
-    <footer
-      aria-label="Usage and scheduled tasks"
-      className="fixed inset-x-0 bottom-0 z-20 hidden h-18 md:block overflow-x-auto border-t border-border bg-background px-4 py-2"
-    >
-      <UsageOverview compact />
-    </footer>
+    <>
+      <footer
+        aria-label="Usage and scheduled tasks"
+        data-usage-size={display.barSize}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-20 hidden border-t border-border bg-background px-5 py-3",
+          heights[display.barSize],
+          display.visible && "md:flex",
+          display.barSize === "compact" && "py-2",
+        )}
+      >
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <UsageOverview compact />
+        </div>
+        <div className="ms-3 flex shrink-0 items-start border-s border-border ps-2">
+          <UsageDisplaySettingsMenu />
+        </div>
+      </footer>
+      {!display.visible ? (
+        <div className="fixed bottom-3 right-3 z-20 hidden md:block">
+          <UsageDisplaySettingsMenu />
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -76,6 +104,10 @@ function EnvironmentOverview({
   const environment = useEnvironment(environmentId);
   const config = useAtomValue(serverEnvironment.configValueAtom(environmentId));
   const now = useNowMinute();
+  const nowMs = Date.parse(now);
+  const theme = useRenderedAppearance();
+  const display = useClientSettings((settings) => settings.usageDisplay);
+  const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
   const usageWindow = makeWindow(1, new Date(now));
   const connected = environment?.connection.phase === "connected";
   const canReadUsage = useEnvironmentScope(environmentId, AuthDiagnosticsReadScope);
@@ -109,7 +141,7 @@ function EnvironmentOverview({
     ?.filter((task) => task.nextRunAt !== null)
     .toSorted((a, b) => a.nextRunAt!.localeCompare(b.nextRunAt!))[0];
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
-  const ceiling = settings?.scheduledTaskUsageCeilingPercent ?? null;
+  const ceiling = settings?.promptUsageBudgetPercent ?? null;
   const tokensLabel = totalTokens === undefined ? "Unavailable" : formatTokens(totalTokens);
   const tokensStatus = !connected
     ? "Disconnected"
@@ -129,28 +161,52 @@ function EnvironmentOverview({
   const nextLabel = next
     ? `Next: ${new Date(next.nextRunAt!).toLocaleString()}`
     : "No upcoming timed runs";
-  const menuBarItems = JSON.stringify([
-    { label: `Tokens today: ${tokensLabel}`, action: "open-usage" },
-    ...accounts.flatMap((account) =>
-      account.limits.windows.map((limit) => ({
-        label: `${accountName(account)} ${limit.label}: ${Math.round(limit.usedPercent)}% used`,
+  const menuBarSummary = JSON.stringify({
+    display,
+    environmentLabel: environment?.label ?? "Current environment",
+    theme,
+    items: [
+      ...accounts.flatMap((account) =>
+        account.limits.windows.map((limit) => ({
+          label: `${accountName(account)} · ${limit.windowDurationMins === 300 ? "5-hour" : limit.label}`,
+          usedPercent: Math.max(0, Math.min(100, limit.usedPercent)),
+          reset: limitResetCountdown(limit, nowMs),
+          detail: limitResetTime(limit, timestampFormat, nowMs),
+          action: "open-usage" as const,
+          section: "limits" as const,
+        })),
+      ),
+      {
+        label: "Tokens today",
+        value: tokensLabel,
+        detail: tokensStatus,
         action: "open-usage",
-      })),
-    ),
-    { label: `Scheduled: ${tasksLabel}`, action: "open-scheduled-tasks" },
-    {
-      label: `Scheduled usage ceiling: ${ceiling === null ? "Off" : `${ceiling}%`}`,
-      action: "open-scheduled-tasks",
-    },
-  ]);
+        section: "tokens",
+      },
+      {
+        label: "Scheduled tasks",
+        section: "tasks",
+        value: tasksLabel,
+        detail: nextLabel,
+        action: "open-scheduled-tasks",
+      },
+      {
+        label: "Ceiling per prompt",
+        section: "ceiling",
+        value: ceiling === null ? "Off" : `${ceiling}%`,
+        detail: "Subscription allowance",
+        action: "open-scheduled-tasks",
+      },
+    ],
+  } satisfies DesktopMenuBarSummary);
   // The footer is always mounted, so it alone feeds the macOS menu bar dropdown.
   // oxlint-disable-next-line t3code/react-effect-budget -- syncs with the Electron menu bar
   useEffect(() => {
     if (!compact) return;
-    void window.desktopBridge?.setMenuBarSummary?.({
-      items: JSON.parse(menuBarItems) as MenuBarItems,
-    });
-  }, [compact, menuBarItems]);
+    void window.desktopBridge?.setMenuBarSummary?.(
+      JSON.parse(menuBarSummary) as DesktopMenuBarSummary,
+    );
+  }, [compact, menuBarSummary]);
 
   const refreshButton = (
     <Button
@@ -165,84 +221,136 @@ function EnvironmentOverview({
   );
   const limitSlots =
     accounts.length === 0 ? (
-      <p className="text-muted-foreground">No provider limits available</p>
+      <p style={usageSectionStyle(display, "limits")} className="text-muted-foreground">
+        No provider limits available
+      </p>
     ) : (
       accounts.map((account) => (
-        <section key={account.key} className={compact ? "w-52 shrink-0 space-y-0.5" : "space-y-1"}>
-          <h2 className={compact ? "font-medium" : "text-muted-foreground"}>
+        <section
+          key={account.key}
+          style={usageSectionStyle(display, "limits")}
+          className={
+            compact
+              ? "w-96 shrink-0 space-y-2 in-data-[usage-size=compact]:w-88 in-data-[usage-size=large]:w-104"
+              : "space-y-3"
+          }
+        >
+          <h2 className="text-xs font-medium text-muted-foreground">
             {compact ? `${accountName(account)} limits` : accountName(account)}
           </h2>
-          <LimitRows limits={account.limits} checkedAt={account.limits.checkedAt} />
+          <div className={compact ? "grid grid-cols-2 gap-5" : "space-y-3"}>
+            <LimitRows
+              limits={account.limits}
+              checkedAt={account.limits.checkedAt}
+              now={nowMs}
+              timestampFormat={timestampFormat}
+            />
+          </div>
         </section>
       ))
     );
   const tasksBody = (
     <>
-      <p>{tasksLabel}</p>
-      <p className="max-w-64 truncate text-muted-foreground">{nextLabel}</p>
+      <p className="font-medium">{tasksLabel}</p>
+      <Tooltip>
+        <TooltipTrigger render={<p className="max-w-64 truncate text-xs text-muted-foreground" />}>
+          {nextLabel}
+        </TooltipTrigger>
+        <TooltipPopup>{nextLabel}</TooltipPopup>
+      </Tooltip>
     </>
   );
 
   if (compact) {
     return (
-      <div className="flex min-w-max items-start gap-6 text-xs">
+      <div
+        className={cn(
+          "flex h-full min-w-max items-center gap-6 text-sm",
+          display.alignment === "center"
+            ? "justify-center"
+            : display.alignment === "end"
+              ? "justify-end"
+              : "justify-start",
+        )}
+      >
         {limitSlots}
-        <Popover>
-          <PopoverTrigger render={<Button size="xs" variant="outline" className="shrink-0" />}>
-            Tokens today · <span className="tabular-nums">{tokensLabel}</span>
-            <ChevronDownIcon />
-          </PopoverTrigger>
-          <PopoverPopup side="top" align="start">
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2">
-                <h2 className="font-medium">Tokens today</h2>
-                {refreshButton}
-              </div>
-              <p className="text-lg font-semibold tabular-nums">{tokensLabel}</p>
-              <p className="text-muted-foreground">{tokensStatus}</p>
-              <Link to="/usage" className="text-primary underline underline-offset-2">
-                View usage details
-              </Link>
-            </div>
-          </PopoverPopup>
-        </Popover>
-        <section className="w-56 shrink-0 space-y-0.5">
-          <h2>
-            <Link
-              to="/scheduled-tasks"
-              search={{ environmentId }}
-              className="font-medium hover:underline"
+        <section
+          style={usageSectionStyle(display, "tokens")}
+          className="w-36 shrink-0 space-y-1 border-s border-border ps-6"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xs font-medium text-muted-foreground">Tokens today</h2>
+            {refreshButton}
+          </div>
+          <p className="text-2xl font-semibold tracking-tight tabular-nums in-data-[usage-size=compact]:text-xl in-data-[usage-size=large]:text-3xl">
+            {tokensLabel}
+          </p>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  to="/usage"
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                />
+              }
             >
-              Scheduled tasks
-            </Link>
-          </h2>
-          {tasksBody}
+              Usage details ↗
+            </TooltipTrigger>
+            <TooltipPopup>{tokensStatus}</TooltipPopup>
+          </Tooltip>
         </section>
-        <section className="shrink-0">
-          <ScheduledUsageCeiling environmentId={environmentId} compact />
+        <section
+          style={usageSectionStyle(display, "tasks")}
+          className="w-48 shrink-0 space-y-2 border-s border-border ps-6"
+        >
+          <h2 className="text-xs font-medium text-muted-foreground">Scheduled tasks</h2>
+          {tasksBody}
+          <Link
+            to="/scheduled-tasks"
+            search={{ environmentId }}
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Manage tasks ↗
+          </Link>
+        </section>
+        <section
+          style={usageSectionStyle(display, "ceiling")}
+          className="w-52 shrink-0 space-y-2 border-s border-border ps-6"
+        >
+          <PromptUsageBudgetSettings environmentId={environmentId} compact />
+          <p className="text-xs text-muted-foreground">Subscription allowance per prompt</p>
         </section>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 text-xs">
-      <section className="space-y-2">
+    <div className="flex flex-col gap-5 text-sm">
+      <section
+        style={usageSectionStyle(display, "tokens")}
+        className="space-y-3 border-b border-border pb-4"
+      >
         <div className="flex items-center gap-2">
           <h2 className="font-medium">Tokens today</h2>
           {refreshButton}
         </div>
-        <p className="text-lg font-semibold tabular-nums">{tokensLabel}</p>
+        <p className="text-3xl font-semibold tracking-tight tabular-nums">{tokensLabel}</p>
         <p className="text-muted-foreground">{tokensStatus}</p>
       </section>
-      <section className="space-y-2">
+      <section
+        style={usageSectionStyle(display, "limits")}
+        className="space-y-3 border-b border-border pb-4"
+      >
         <h2 className="font-medium">Usage limits</h2>
         {limitSlots}
         <Link to="/usage" className="text-primary underline underline-offset-2">
           View usage details
         </Link>
       </section>
-      <section className="space-y-2">
+      <section
+        style={usageSectionStyle(display, "tasks")}
+        className="space-y-3 border-b border-border pb-4"
+      >
         <h2 className="font-medium">Scheduled tasks</h2>
         {tasksBody}
         <Button
@@ -253,14 +361,12 @@ function EnvironmentOverview({
           Schedule / manage tasks
         </Button>
       </section>
-      <section className="max-w-80">
-        <ScheduledUsageCeiling environmentId={environmentId} />
+      <section style={usageSectionStyle(display, "ceiling")} className="max-w-80">
+        <PromptUsageBudgetSettings environmentId={environmentId} />
       </section>
     </div>
   );
 }
-
-type MenuBarItems = Parameters<NonNullable<DesktopBridge["setMenuBarSummary"]>>[0]["items"];
 
 type LimitAccount = ReturnType<typeof collectLimitAccounts>[number];
 
@@ -273,34 +379,90 @@ function accountName(account: LimitAccount) {
   );
 }
 
-function LimitRows({ limits, checkedAt }: { limits: LimitAccount["limits"]; checkedAt: string }) {
+function limitResetCountdown(limit: ServerProviderUsageWindow, now: number) {
+  if (!limit.resetsAt) return "Reset time unavailable";
+  if (Date.parse(limit.resetsAt) <= now) return "Reset due";
+  return formatResetsIn(limit, now)?.replace(/^resets/, "Resets") ?? "Reset time unavailable";
+}
+
+function limitResetTime(
+  limit: ServerProviderUsageWindow,
+  timestampFormat: TimestampFormat,
+  now: number,
+) {
+  if (!limit.resetsAt) return "Not reported by provider";
+  if (Date.parse(limit.resetsAt) <= now) return "Waiting for provider update";
+  return formatUpcomingTimestamp(limit.resetsAt, timestampFormat, now);
+}
+
+function LimitRows({
+  limits,
+  checkedAt,
+  now,
+  timestampFormat,
+}: {
+  limits: LimitAccount["limits"];
+  checkedAt: string;
+  now: number;
+  timestampFormat: TimestampFormat;
+}) {
   const notice = limitsNotice(limits);
   if (notice) return <p>{notice}</p>;
   return limits.windows.map((limit) => (
-    <Tooltip key={limit.id}>
-      <TooltipTrigger render={<div className="flex items-center gap-2" tabIndex={0} />}>
-        <span className="min-w-14">{limit.label}</span>
-        <div
-          className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
-          role="meter"
-          aria-label={`${limit.label} usage`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={limit.usedPercent}
-        >
+    <div key={limit.id} className="min-w-0 space-y-1.5">
+      <Tooltip>
+        <TooltipTrigger render={<div className="space-y-1.5" tabIndex={0} />}>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {limit.windowDurationMins === 300 ? "5-hour" : limit.label}
+            </span>
+            <span className="text-lg font-semibold tracking-tight tabular-nums in-data-[usage-size=compact]:text-base in-data-[usage-size=large]:text-2xl">
+              {Math.round(limit.usedPercent)}%
+              <span className="ms-1 text-xs font-normal text-muted-foreground">used</span>
+            </span>
+          </div>
           <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${limit.usedPercent}%` }}
-          />
-        </div>
-        <span className="tabular-nums">{Math.round(limit.usedPercent)}% used</span>
-      </TooltipTrigger>
-      <TooltipPopup>
-        {limit.resetsAt
-          ? `Resets ${new Date(limit.resetsAt).toLocaleString()}`
-          : "Reset time unavailable"}
-        . Reported {new Date(checkedAt).toLocaleString()}.
-      </TooltipPopup>
-    </Tooltip>
+            className="h-1.5 overflow-hidden rounded-full bg-muted"
+            role="meter"
+            aria-label={`${limit.label} usage`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={limit.usedPercent}
+          >
+            <div
+              className={
+                limit.usedPercent >= 90
+                  ? "h-full rounded-full bg-destructive"
+                  : limit.usedPercent >= 75
+                    ? "h-full rounded-full bg-warning"
+                    : "h-full rounded-full bg-primary"
+              }
+              style={{ width: `${Math.max(0, Math.min(100, limit.usedPercent))}%` }}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipPopup>
+          {limit.resetsAt
+            ? `Resets ${new Date(limit.resetsAt).toLocaleString()}`
+            : "Reset time unavailable"}
+          . Reported {new Date(checkedAt).toLocaleString()}.
+        </TooltipPopup>
+      </Tooltip>
+      <div className="pt-0.5">
+        <p className="whitespace-nowrap text-sm font-medium tabular-nums in-data-[usage-size=compact]:text-xs in-data-[usage-size=large]:text-base">
+          {limitResetCountdown(limit, now)}
+        </p>
+        <p className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+          {limitResetTime(limit, timestampFormat, now)}
+        </p>
+      </div>
+    </div>
   ));
+}
+
+function usageSectionStyle(display: UsageDisplaySettings, section: UsageDisplaySection) {
+  return {
+    order: display.order.indexOf(section),
+    ...(display.hidden.includes(section) ? { display: "none" } : {}),
+  };
 }

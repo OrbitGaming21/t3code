@@ -453,7 +453,8 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
         className={cn(
           "relative min-w-0 max-w-[80%] rounded-2xl text-message-foreground",
           userMessage.attribution === "guest" ? guestBubbleClassName(false) : "bg-message",
-          !folded && "p-3",
+          !folded && "p-3 in-data-[chat-style=classic]:px-4",
+          userMessage.attribution !== "guest" && "in-data-[chat-style=classic]:bg-muted",
           folded && expanded && "w-full",
         )}
       >

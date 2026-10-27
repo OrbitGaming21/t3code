@@ -1,3 +1,4 @@
+import { USAGE_BAR_HEIGHT } from "./usage/UsageDisplaySettings";
 import { UsageOverviewFooter } from "./usage/UsageOverview";
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
@@ -31,7 +32,11 @@ import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
-import { useEnvironmentIdentificationMode, useLegacySidebarEnabled } from "../hooks/useSettings";
+import {
+  useClientSettings,
+  useEnvironmentIdentificationMode,
+  useLegacySidebarEnabled,
+} from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
@@ -278,6 +283,10 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
       if (!/^\/settings(\/|$)/.test(router.state.location.pathname))
         void router.navigate({ to: "/settings" });
     }),
+    registerMenuAction(
+      "open-usage-settings",
+      () => void router.navigate({ to: "/settings/appearance", hash: "usage-display" }),
+    ),
     registerMenuAction("open-usage", () => void router.navigate({ to: "/usage" })),
     registerMenuAction(
       "open-scheduled-tasks",
@@ -381,6 +390,7 @@ function SidebarControl() {
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const legacySidebarEnabled = useLegacySidebarEnabled();
+  const usageDisplay = useClientSettings((settings) => settings.usageDisplay);
   const [sidebarRouteReveal] = useState<SidebarRouteReveal>(() => ({
     observedKey: null,
     pendingKey: null,
@@ -415,6 +425,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       : {}
   ) as CSSProperties;
   const sidebarProviderStyle = {
+    "--usage-bar-height": `${usageDisplay.visible ? USAGE_BAR_HEIGHT[usageDisplay.barSize] : 0}px`,
     "--sidebar-width": `${clampThreadSidebarWidth(sidebarWidth, sidebarMinimumWidth, sidebarMaximumWidth)}px`,
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...windowControlsInsetStyle,
@@ -423,7 +434,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
-        className="h-[calc(100dvh-var(--workspace-bottom-inset))]! min-h-0! [--workspace-bottom-inset:0px] md:[--workspace-bottom-inset:4.5rem] [&>[data-slot=sidebar-inset]]:h-full"
+        className="h-[calc(100dvh-var(--workspace-bottom-inset))]! min-h-0! [--workspace-bottom-inset:0px] md:[--workspace-bottom-inset:var(--usage-bar-height)] [&>[data-slot=sidebar-inset]]:h-full"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}

@@ -162,7 +162,7 @@ Use `Ctrl+Shift+1/2/3/4` (`Cmd+Shift+1/2/3/4` on macOS) for the past
 Press `Escape` to return to the previous page. Customize these shortcuts in
 **Settings → Keybindings**.
 
-## Usage overview and scheduled usage ceiling
+## Usage overview and subscription ceiling per prompt
 
 On web and desktop, open **T3 Code** at the top of the sidebar or use the bottom panel
 for today's token total, reported provider limits, and scheduled tasks. The overview follows
@@ -172,13 +172,19 @@ same summary also appears under **T3 Code** in the menu bar while the app is run
 The bottom panel is hidden on narrow screens; open **T3 Code** or the **Scheduled tasks**
 screen from the sidebar instead.
 
-Set **Scheduled usage ceiling** in the overview or on the **Scheduled tasks** screen to hold
-new scheduled runs when any quota window for their provider reaches that percentage.
-The setting applies to the selected environment, including webhook tasks and **Run now**.
-It uses overall account usage, including work outside scheduled tasks. Clear the field and
-save to disable it; 0 holds all scheduled runs.
+Set **Ceiling per prompt** in the overview or on the **Scheduled tasks** screen
+to limit how much of a subscription quota window each prompt can spend. It applies to new
+prompts in the selected environment, including scheduled prompts. Clear the field and save
+to disable it; 0 prevents prompts from starting.
 
-A held run appears as failed with an explanation and tries again at its next scheduled time.
-Providers without fresh usage reports are held while a ceiling is enabled. Work already
-running or queued can continue past the ceiling, so this is a launch limit rather than an
-exact token budget.
+T3 records the provider's usage when the prompt starts and checks for increases every
+30 seconds. It interrupts that prompt and holds its queue when the reported increase
+reaches the budget. Subscription usage is account-wide: concurrent work in other threads
+or apps also contributes. Delayed reports and work between checks can cause overshoot;
+this is not an exact token cutoff. Providers without fresh quota reports cannot start
+prompts while a budget is enabled. Changing the percentage affects the next prompt.
+
+Use **Usage display settings** beside the bottom bar or in the macOS menu to change
+their sizes, move sections earlier or later, show or hide sections, and align the bar.
+These preferences stay on this device. You can also find them in
+**Settings → Appearance → Usage bar & menu**, including after hiding the bar.

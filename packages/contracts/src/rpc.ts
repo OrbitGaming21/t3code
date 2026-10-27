@@ -7,6 +7,15 @@ import {
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
 import {
+  ConnectedApp,
+  ConnectedAppAddInput,
+  ConnectedAppError,
+  ConnectedAppListResult,
+  ConnectedAppRemoveInput,
+  ConnectedAppSignInInput,
+  ConnectedAppSignInResult,
+} from "./connectedApps.ts";
+import {
   McpAppCallToolInput,
   McpAppCallToolResult,
   McpAppReadResourceInput,
@@ -521,6 +530,10 @@ export const WS_METHODS = {
   scheduledTasksDelete: "scheduledTasks.delete",
   scheduledTasksRunNow: "scheduledTasks.runNow",
   scheduledTasksRotateWebhookToken: "scheduledTasks.rotateWebhookToken",
+  connectedAppsList: "connectedApps.list",
+  connectedAppsAdd: "connectedApps.add",
+  connectedAppsRemove: "connectedApps.remove",
+  connectedAppsSignIn: "connectedApps.signIn",
   secretsAnswerRequest: "secrets.answerRequest",
   guestShareCreate: "guestShare.create",
   scheduledTasksListWebhookDeliveries: "scheduledTasks.listWebhookDeliveries",
@@ -1859,6 +1872,32 @@ const WsScheduledTasksRotateWebhookTokenRpc = Rpc.make(
   },
 );
 
+const ConnectedAppRpcError = Schema.Union([ConnectedAppError, EnvironmentAuthorizationError]);
+
+const WsConnectedAppsListRpc = Rpc.make(WS_METHODS.connectedAppsList, {
+  payload: Schema.Struct({}),
+  success: ConnectedAppListResult,
+  error: ConnectedAppRpcError,
+});
+
+const WsConnectedAppsAddRpc = Rpc.make(WS_METHODS.connectedAppsAdd, {
+  payload: ConnectedAppAddInput,
+  success: ConnectedApp,
+  error: ConnectedAppRpcError,
+});
+
+const WsConnectedAppsRemoveRpc = Rpc.make(WS_METHODS.connectedAppsRemove, {
+  payload: ConnectedAppRemoveInput,
+  success: Schema.Void,
+  error: ConnectedAppRpcError,
+});
+
+const WsConnectedAppsSignInRpc = Rpc.make(WS_METHODS.connectedAppsSignIn, {
+  payload: ConnectedAppSignInInput,
+  success: ConnectedAppSignInResult,
+  error: ConnectedAppRpcError,
+});
+
 const WsGuestShareCreateRpc = Rpc.make(WS_METHODS.guestShareCreate, {
   payload: GuestShareCreateInput,
   success: GuestShareCreateResult,
@@ -1974,6 +2013,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsScheduledTasksDeleteRpc,
   WsScheduledTasksRunNowRpc,
   WsScheduledTasksRotateWebhookTokenRpc,
+  WsConnectedAppsListRpc,
+  WsConnectedAppsAddRpc,
+  WsConnectedAppsRemoveRpc,
+  WsConnectedAppsSignInRpc,
   WsSecretsAnswerRequestRpc,
   WsScheduledTasksListWebhookDeliveriesRpc,
   WsScheduledTasksGetWebhookDeliveryRpc,

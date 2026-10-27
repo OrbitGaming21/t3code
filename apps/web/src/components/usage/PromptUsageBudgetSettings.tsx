@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-export function ScheduledUsageCeiling({
+export function PromptUsageBudgetSettings({
   environmentId,
   compact = false,
   inline = false,
@@ -19,8 +19,8 @@ export function ScheduledUsageCeiling({
 }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
-  const save = useAtomCommand(serverEnvironment.updateSettings, "scheduled usage ceiling");
-  const saved = settings?.scheduledTaskUsageCeilingPercent ?? null;
+  const save = useAtomCommand(serverEnvironment.updateSettings, "subscription ceiling per prompt");
+  const saved = settings?.promptUsageBudgetPercent ?? null;
   const [draft, setDraft] = useState<{ saved: number | null; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const value = draft?.saved === saved ? draft.value : saved === null ? "" : String(saved);
@@ -32,19 +32,19 @@ export function ScheduledUsageCeiling({
     setSaving(true);
     const result = await save({
       environmentId,
-      input: { patch: { scheduledTaskUsageCeilingPercent: percent } },
+      input: { patch: { promptUsageBudgetPercent: percent } },
     });
     if (result._tag === "Success") setDraft(null);
     setSaving(false);
   };
   return (
     <div className={inline ? "flex items-center gap-2" : "space-y-1"}>
-      <Label>{compact ? "Scheduled ceiling" : "Scheduled usage ceiling"}</Label>
+      <Label>Ceiling per prompt</Label>
       <div className="flex items-center gap-2">
         <div className="w-20">
           <Input
-            size={compact ? "compact" : "default"}
-            aria-label="Scheduled usage ceiling percent"
+            size="default"
+            aria-label="Subscription ceiling per prompt percent"
             type="number"
             min={0}
             max={100}
@@ -61,7 +61,7 @@ export function ScheduledUsageCeiling({
         </div>
         <span>%</span>
         <Button
-          size="xs"
+          size="sm"
           variant="outline"
           disabled={!changed || !canSave || saving}
           onClick={() => void commit()}
@@ -73,7 +73,7 @@ export function ScheduledUsageCeiling({
         <p className="text-muted-foreground">
           {!valid
             ? "Enter 0–100, or clear to disable."
-            : "Stops new scheduled runs when any provider limit reaches this percentage. Running tasks can exceed it. Missing limits hold runs. Clear to disable; 0 pauses all scheduled runs."}
+            : "Stops each prompt when reported account usage increases by this percentage of a quota window. Checks every 30 seconds; reporting delays and concurrent account activity can cause overshoot. Missing limits prevent a prompt from starting. Clear to disable; 0 pauses subscription prompts."}
         </p>
       ) : null}
     </div>

@@ -1262,6 +1262,23 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:scheduled-task:webhook-delivery",
       tag: WS_METHODS.scheduledTasksGetWebhookDelivery,
     }),
+    connectedApps: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:connected-apps",
+      tag: WS_METHODS.connectedAppsList,
+      staleTimeMs: 0,
+    }),
+    addConnectedApp: createEnvironmentRpcCommand(runtime, {
+      label: "connected-apps:add",
+      tag: WS_METHODS.connectedAppsAdd,
+    }),
+    removeConnectedApp: createEnvironmentRpcCommand(runtime, {
+      label: "connected-apps:remove",
+      tag: WS_METHODS.connectedAppsRemove,
+    }),
+    signInConnectedApp: createEnvironmentRpcCommand(runtime, {
+      label: "connected-apps:sign-in",
+      tag: WS_METHODS.connectedAppsSignIn,
+    }),
     scheduledTasksLive: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:server:scheduled-tasks:live",
       tag: WS_METHODS.scheduledTasksSubscribe,

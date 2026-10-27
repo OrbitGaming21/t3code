@@ -1233,13 +1233,13 @@ function WebhookScheduleDetails({
   );
 }
 
-function ScheduledUsageCeiling({ environmentId }: { readonly environmentId: EnvironmentId }) {
+function PromptUsageBudgetSettings({ environmentId }: { readonly environmentId: EnvironmentId }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
   const save = useAtomCommand(serverEnvironment.updateSettings, {
-    label: "scheduled usage ceiling",
+    label: "subscription ceiling per prompt",
   });
-  const saved = settings?.scheduledTaskUsageCeilingPercent ?? null;
+  const saved = settings?.promptUsageBudgetPercent ?? null;
   const [draft, setDraft] = useState<{ saved: number | null; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const value = draft?.saved === saved ? draft.value : saved === null ? "" : String(saved);
@@ -1250,7 +1250,7 @@ function ScheduledUsageCeiling({ environmentId }: { readonly environmentId: Envi
     setSaving(true);
     const result = await save({
       environmentId,
-      input: { patch: { scheduledTaskUsageCeilingPercent: percent } },
+      input: { patch: { promptUsageBudgetPercent: percent } },
     });
     if (result._tag === "Success") setDraft(null);
     setSaving(false);
@@ -1258,7 +1258,7 @@ function ScheduledUsageCeiling({ environmentId }: { readonly environmentId: Envi
   return (
     <View className="gap-2 pb-3">
       <FormField
-        label="Scheduled usage ceiling (%)"
+        label="Ceiling per prompt (%)"
         value={value}
         placeholder="Off"
         keyboardType="number-pad"
@@ -1268,13 +1268,13 @@ function ScheduledUsageCeiling({ environmentId }: { readonly environmentId: Envi
       <View className="gap-2 px-4">
         <Text className="text-sm text-foreground-muted">
           {valid
-            ? "Hold new runs when any provider quota reaches this percentage. Missing limits hold runs. Clear to disable; 0 pauses scheduled runs. Running work can exceed it."
+            ? "Stops each prompt when reported account usage increases by this percentage. Checks every 30 seconds; reporting delays and concurrent usage can cause overshoot. Missing limits prevent starting. Clear to disable; 0 pauses subscription prompts."
             : "Enter a whole number from 0 to 100, or clear to disable."}
         </Text>
         <Button
           disabled={!valid || percent === saved || !canSave || saving}
           onPress={() => void commit()}
-          label={saving ? "Saving…" : "Save usage ceiling"}
+          label={saving ? "Saving…" : "Save prompt ceiling"}
         />
       </View>
     </View>
@@ -1344,7 +1344,7 @@ function EnvironmentTasks({
         />
       }
     >
-      <ScheduledUsageCeiling environmentId={environmentId} />
+      <PromptUsageBudgetSettings environmentId={environmentId} />
       {tasks.error ? (
         <Text className="p-4 text-base text-danger-foreground">{tasks.error}</Text>
       ) : !tasks.data ? (

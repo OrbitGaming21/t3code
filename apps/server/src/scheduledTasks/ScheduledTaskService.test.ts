@@ -1,4 +1,3 @@
-import * as ScheduledTaskUsagePolicy from "./ScheduledTaskUsagePolicy.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as NodeUtil from "node:util";
 
@@ -188,13 +187,7 @@ it.effect(
         Effect.gen(function* () {
           yield* Layer.build(
             Layer.provideMerge(
-              ScheduledTaskService.layer.pipe(
-                Layer.provide(
-                  Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({
-                    check: () => Effect.void,
-                  }),
-                ),
-              ),
+              ScheduledTaskService.layer,
               Layer.mergeAll(
                 Layer.mock(ThreadLaunchService.ThreadLaunchService)({
                   launch: () =>
@@ -287,13 +280,7 @@ it.effect(
         Effect.gen(function* () {
           yield* Layer.build(
             Layer.provideMerge(
-              ScheduledTaskService.layer.pipe(
-                Layer.provide(
-                  Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({
-                    check: () => Effect.void,
-                  }),
-                ),
-              ),
+              ScheduledTaskService.layer,
               Layer.mergeAll(
                 Layer.mock(ThreadLaunchService.ThreadLaunchService)({
                   launch: () =>
@@ -358,9 +345,6 @@ it.effect("thread cleanup notifies subscribers and a finishing run cannot recrea
     const removed = yield* Deferred.make<void>();
     const layer = ScheduledTaskService.layer.pipe(
       Layer.provide(
-        Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
-      ),
-      Layer.provide(
         Layer.mergeAll(
           Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
           Layer.mock(ThreadManagementService.ThreadManagementService)({
@@ -415,59 +399,6 @@ it.effect("thread cleanup notifies subscribers and a finishing run cannot recrea
       yield* Deferred.succeed(release, undefined);
       yield* Fiber.join(run);
       assert.lengthOf((yield* service.list()).tasks, 0);
-    }).pipe(Effect.provide(layer));
-  }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
-);
-
-it.effect("records a usage hold without dispatching and advances the schedule", () =>
-  Effect.gen(function* () {
-    const layer = ScheduledTaskService.layer.pipe(
-      Layer.provide(
-        Layer.mergeAll(
-          Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({
-            check: (task) =>
-              Effect.fail(
-                new ScheduledTaskError({ taskId: task.id, message: "Usage ceiling reached." }),
-              ),
-          }),
-          Layer.mock(ThreadLaunchService.ThreadLaunchService)({
-            launch: () => Effect.die("Must not launch over budget"),
-          }),
-          Layer.mock(ThreadManagementService.ThreadManagementService)({
-            sendToThread: () => Effect.die("Must not send over budget"),
-          }),
-          Layer.mock(SecretRequests.SecretRequests)({}),
-          Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
-            namedProjectsRoot: "/projects",
-            isScratchProject: () => Effect.succeed(false),
-          }),
-          NodeCrypto.layer,
-          Scheduler.layer,
-        ),
-      ),
-    );
-    yield* Effect.gen(function* () {
-      const service = yield* ScheduledTaskService.ScheduledTaskService;
-      for (const threadId of [null, ThreadId.make("thread:bound")]) {
-        const { task } = yield* service.upsert({
-          title: "Review",
-          prompt: "Review changes",
-          enabled: true,
-          schedule: { type: "interval", everyMs: 60_000 },
-          projectId: ProjectId.make("project:test"),
-          threadId,
-          workspaceStrategy: { type: "root" },
-          modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
-          runtimeMode: "full-access",
-          interactionMode: "default",
-        });
-        const result = yield* service.runNow({ id: task.id });
-        assert.equal(result.threadId, null);
-        assert.equal(result.task.lastRunStatus, "failed");
-        assert.include(result.task.lastRunError, "Usage ceiling reached.");
-        assert.isNotNull(result.task.nextRunAt);
-        assert.equal(result.task.runCount, 1);
-      }
     }).pipe(Effect.provide(layer));
   }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );

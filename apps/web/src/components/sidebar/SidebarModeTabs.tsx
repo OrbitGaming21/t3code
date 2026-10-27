@@ -24,7 +24,7 @@ export function SidebarModeTabs({
     >
       <Toggle value="threads">
         <SquareTerminalIcon />
-        Threads
+        Code
       </Toggle>
       <Toggle value="chats">
         <MessageCircleIcon />

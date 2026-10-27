@@ -1,4 +1,3 @@
-import * as ScheduledTaskUsagePolicy from "./ScheduledTaskUsagePolicy.ts";
 // @effect-diagnostics-next-line nodeBuiltinImport:off -- Effect's Crypto has no createHmac.
 import * as NodeCrypto from "node:crypto";
 
@@ -256,16 +255,7 @@ const withService = <A, E>(
       return yield* body({ service, launches, sql, secretsByRef });
     }).pipe(
       Effect.provide(
-        Layer.fresh(
-          ScheduledTaskService.layer.pipe(
-            Layer.provide(
-              Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({
-                check: () => Effect.void,
-              }),
-            ),
-            Layer.provide(layerDependencies),
-          ),
-        ),
+        Layer.fresh(ScheduledTaskService.layer.pipe(Layer.provide(layerDependencies))),
       ),
     );
   }).pipe(

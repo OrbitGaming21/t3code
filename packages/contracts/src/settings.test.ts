@@ -371,21 +371,53 @@ describe("server model preferences", () => {
   });
 });
 
-describe("scheduled task usage ceiling", () => {
+describe("per-prompt subscription budget", () => {
   it("defaults to disabled and accepts explicit zero and full quota", () => {
-    expect(decodeServerSettings({}).scheduledTaskUsageCeilingPercent).toBeNull();
+    expect(decodeServerSettings({}).promptUsageBudgetPercent).toBeNull();
     for (const value of [null, 0, 50, 100]) {
       expect(
-        decodeServerSettingsPatch({ scheduledTaskUsageCeilingPercent: value })
-          .scheduledTaskUsageCeilingPercent,
+        decodeServerSettingsPatch({ promptUsageBudgetPercent: value }).promptUsageBudgetPercent,
       ).toBe(value);
     }
   });
   it("rejects invalid percentages", () => {
     for (const value of [-1, 101, 0.5, "50", Number.NaN]) {
-      expect(() =>
-        decodeServerSettingsPatch({ scheduledTaskUsageCeilingPercent: value }),
-      ).toThrow();
+      expect(() => decodeServerSettingsPatch({ promptUsageBudgetPercent: value })).toThrow();
     }
+  });
+});
+
+describe("usage display and chat billing preferences", () => {
+  it("keeps existing displays and defaults new chats to subscription billing", () => {
+    const settings = decodeClientSettings({});
+    expect(settings.chatBillingPreference).toBe("subscription");
+    expect(settings.usageDisplay).toEqual({
+      barSize: "comfortable",
+      menuSize: "comfortable",
+      alignment: "start",
+      visible: true,
+      order: ["limits", "tokens", "tasks", "ceiling"],
+      hidden: [],
+    });
+    expect(decodeClientSettings(encodeClientSettings(settings))).toEqual(settings);
+  });
+  it("saves customized layouts and rejects missing or repeated sections", () => {
+    const display = {
+      ...decodeClientSettings({}).usageDisplay,
+      visible: false,
+      menuSize: "large",
+      order: ["tasks", "limits", "ceiling", "tokens"],
+    };
+    expect(
+      decodeClientSettingsPatch({ usageDisplay: display, chatBillingPreference: "api-credits" }),
+    ).toMatchObject({ usageDisplay: display, chatBillingPreference: "api-credits" });
+    expect(() =>
+      decodeClientSettingsPatch({
+        usageDisplay: { ...display, order: ["limits", "limits", "tasks", "ceiling"] },
+      }),
+    ).toThrow();
+    expect(() =>
+      decodeClientSettingsPatch({ usageDisplay: { ...display, order: ["limits"] } }),
+    ).toThrow();
   });
 });

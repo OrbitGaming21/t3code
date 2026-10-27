@@ -1,3 +1,4 @@
+import { UsageDisplaySettingsPanel } from "../usage/UsageDisplaySettings";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import {
@@ -85,6 +86,9 @@ export function AppearanceSettingsPanel() {
 
   return (
     <SettingsPageContainer>
+      <SettingsSection id="usage-display" title="Usage bar & menu">
+        <UsageDisplaySettingsPanel />
+      </SettingsSection>
       <SettingsSection id="appearance" title="Colors & themes" variant="plain" hideTitle>
         <div id={searchableSetting("theme").id}>
           <ThemeLibrary

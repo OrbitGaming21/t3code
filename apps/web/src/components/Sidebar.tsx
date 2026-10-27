@@ -2705,7 +2705,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       return;
     }
     setProjectScopeKey(SCRATCH_PROJECT_SCOPE_KEY);
-    if (!projectGroups.some((group) => group.isScratch)) startChat();
+    if (sidebarMode !== "chats") startChat();
   };
 
   const newThreadShortcutLabel =
@@ -2726,6 +2726,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               </div>
             )}
             <SidebarThreadHeader
+              chatMode={sidebarMode === "chats"}
               searchFieldRef={headerSearchRef}
               hasProjects={projectGroups.length > 0}
               projectScope={
@@ -2982,7 +2983,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                           scopeThreadRef(thread.environmentId, thread.id),
                         );
                         const isCard =
-                          section === "active" || section === "pinned" || section === "working";
+                          sidebarMode !== "chats" &&
+                          (section === "active" || section === "pinned" || section === "working");
                         const rowVariant = isCard ? "card" : "slim";
                         return (
                           <SortableThreadRow
@@ -3051,7 +3053,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             environmentMachine={
                               environmentMachineById.get(thread.environmentId) ?? "server"
                             }
-                            scratchMachineLabel={scratchMachineLabelFor(thread)}
+                            scratchMachineLabel={
+                              sidebarMode === "chats" ? null : scratchMachineLabelFor(thread)
+                            }
                             project={
                               projectByKey.get(`${thread.environmentId}:${thread.projectId}`) ??
                               null

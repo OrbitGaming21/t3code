@@ -1,3 +1,5 @@
+import { ChatBillingControl } from "./ChatBillingControl";
+import { chatBillingSource } from "./chatBilling";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { insertAttachmentReferencesForDraft } from "./composerAttachmentReferences";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
@@ -367,6 +369,8 @@ export interface ChatComposerHandle {
 }
 
 export interface ChatComposerProps {
+  chatStyle?: boolean;
+  chatControlsHost?: HTMLDivElement | null;
   composerDraftTarget: ScopedThreadRef | DraftId;
   environmentId: EnvironmentId;
   canOperateThread: boolean;
@@ -536,6 +540,8 @@ const NO_PROVIDER_SLASH_COMMANDS: ServerProvider["slashCommands"] = [];
 
 export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps) {
   const {
+    chatStyle = false,
+    chatControlsHost = null,
     composerDraftTarget,
     environmentId,
     canOperateThread,
@@ -983,10 +989,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ? runtimeMode
     : (compatibleRuntimeModeOptions[0]?.mode ?? runtimeMode);
 
-  const providerSendBlockReason = getAntigravitySendBlockReason(
-    selectedProviderEntry?.snapshot,
-    selectedModel,
-  );
+  const chatBillingMismatch =
+    chatStyle &&
+    selectedProviderEntry?.driverKind === "codex" &&
+    chatBillingSource(selectedProviderEntry.snapshot) !== settings.chatBillingPreference;
+  const providerSendBlockReason = chatBillingMismatch
+    ? "Choose your billing source from Chat billing before sending. Subscription and API credits use separate accounts."
+    : getAntigravitySendBlockReason(selectedProviderEntry?.snapshot, selectedModel);
   const sendDisabledReason =
     externalSendDisabledReason ??
     (multipleModelSelections?.length === 0 ? "Select at least one model." : null) ??
@@ -2353,14 +2362,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     providerInputSubmissionError !== null ||
     hasImageAttachmentAttention ||
     preparingComposerImages.length > 0;
-  const isComposerResting = shouldUseRestingComposerLayout({
-    isExistingThread: routeKind === "server" && activeThreadId !== null,
-    isMobileViewport,
-    isScrollCollapsed: isComposerScrollCollapsed,
-    hasExpandedChrome: composerHasExpandedChrome,
-    hasMultilinePrompt,
-    timelineOverflows,
-  });
+  const isComposerResting =
+    !chatStyle &&
+    shouldUseRestingComposerLayout({
+      isExistingThread: routeKind === "server" && activeThreadId !== null,
+      isMobileViewport,
+      isScrollCollapsed: isComposerScrollCollapsed,
+      hasExpandedChrome: composerHasExpandedChrome,
+      hasMultilinePrompt,
+      timelineOverflows,
+    });
   const expandedComposerImages = isComposerResting
     ? standaloneComposerImages.filter((image) => pendingSnapShotIdSet.has(image.id))
     : standaloneComposerImages;
@@ -2554,8 +2565,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       handleRuntimeModeChange={handleRuntimeModeChange}
       composerControlsCollapsed={composerControlsCollapsed}
       composerControlsHidden={composerControlsHidden}
-      restingHiddenBlockCount={restingHiddenBlockCount}
-      iconOnlyBlockCount={iconOnlyBlockCount}
+      restingHiddenBlockCount={chatStyle ? 2 : restingHiddenBlockCount}
+      iconOnlyBlockCount={chatStyle ? 0 : iconOnlyBlockCount}
       showInlineRestingControls={showInlineRestingControls}
       showLeadingSeparator={
         composerControlsCollapsed &&
@@ -3459,7 +3470,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       data-chat-composer-form="true"
       {...threadContextDropTargetProps()}
     >
-      {composerControlsCollapsed && restingControlsHost
+      {chatStyle && chatControlsHost
+        ? createPortal(
+            <div ref={attachExpandedComposerControls} className="flex min-w-0 items-center gap-1">
+              {composerControls}
+              <ChatBillingControl
+                environmentId={environmentId}
+                providers={providerStatuses}
+                selected={selectedProviderEntry?.snapshot ?? null}
+                modelSelection={selectedModelSelection}
+                disabled={isSendBusy || phase === "running"}
+                onSelect={onProviderModelSelect}
+                getDisabledReason={getModelDisabledReason}
+              />
+            </div>,
+            chatControlsHost,
+          )
+        : null}
+      {!chatStyle && composerControlsCollapsed && restingControlsHost
         ? createPortal(
             <div
               ref={attachRestingComposerControls}
@@ -3599,6 +3627,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               isDragOverComposer ? "bg-accent/45 ring-1 ring-inset ring-primary/70" : null,
               projectSelectionRequired ? "opacity-75" : null,
               composerProviderState.composerSurfaceClassName,
+              chatStyle && "bg-muted/40",
             )}
           >
             {showCollapsedMobilePromptRow ? (
@@ -3767,6 +3796,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     containerClassName={cn(isComposerResting && "min-w-0 flex-1")}
                     className={cn(
                       showMobilePendingAnswerActions && "max-sm:pb-12",
+                      chatStyle && "min-h-20 text-base leading-7",
                       isComposerResting &&
                         "my-0 max-h-8 min-h-8 redesign:min-h-8 overflow-hidden py-0 whitespace-pre! leading-8",
                     )}
@@ -3798,7 +3828,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               ? "Choose a project above to start a thread"
                               : showProviderUnavailable
                                 ? "Enable a provider in Settings to send a message"
-                                : DEFAULT_COMPOSER_PLACEHOLDER
+                                : chatStyle
+                                  ? "Message T3 Code"
+                                  : DEFAULT_COMPOSER_PLACEHOLDER
                     }
                     disabled={
                       isConnecting ||
@@ -3862,7 +3894,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 )}
               >
                 <div
-                  ref={attachExpandedComposerControls}
+                  ref={chatStyle && chatControlsHost ? undefined : attachExpandedComposerControls}
                   data-chat-composer-controls="left"
                   data-chat-composer-footer-controls="true"
                   className={cn(
@@ -3870,7 +3902,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     isComposerResting && "hidden",
                   )}
                 >
-                  {composerControlsCollapsed ? null : composerControls}
+                  {chatStyle && chatControlsHost
+                    ? composerAttachButton
+                    : composerControlsCollapsed
+                      ? null
+                      : composerControls}
                 </div>
 
                 <div
@@ -3882,14 +3918,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   }
                   className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
-                  {composerAttachButton}
+                  {chatStyle && chatControlsHost ? null : composerAttachButton}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
                     activeContextWindow={
-                      settings.contextWindowMeterEnabled ? activeContextWindow : null
+                      !chatStyle && settings.contextWindowMeterEnabled ? activeContextWindow : null
                     }
-                    reserveContextWindowMeter={reserveContextWindowMeter}
+                    reserveContextWindowMeter={!chatStyle && reserveContextWindowMeter}
                     activeThreadModelDisplayName={activeThreadModelDisplayName}
                     pendingAction={pendingPrimaryAction}
                     isRunning={phase === "running"}

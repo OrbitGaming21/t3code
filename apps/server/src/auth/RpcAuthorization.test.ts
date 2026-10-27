@@ -64,6 +64,19 @@ describe("RPC authorization scopes", () => {
     }
   });
 
+  it("guards app sign-ins and connection changes with settings write access", () => {
+    for (const method of [
+      WS_METHODS.connectedAppsAdd,
+      WS_METHODS.connectedAppsRemove,
+      WS_METHODS.connectedAppsSignIn,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthSettingsWriteScope);
+    }
+    expect(requiredScopeForRpcMethod(WS_METHODS.connectedAppsList)).toBe(
+      AuthOrchestrationReadScope,
+    );
+  });
+
   it("rejects unknown RPC method names", () => {
     for (const method of ["server.notRegistered", "toString", "constructor"]) {
       expect(() => requiredScopeForRpcMethod(method)).toThrow(

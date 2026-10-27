@@ -1,3 +1,4 @@
+import { ConnectedAppsSettings } from "./ConnectedAppsSettings";
 import { DeviceHostUpdates } from "../device/DeviceHostUpdates";
 import { DeviceToolVersions } from "../device/DeviceToolVersions";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
@@ -1615,6 +1616,7 @@ export function IntegrationsSettingsPanel() {
 
   return (
     <SettingsPageContainer>
+      <ConnectedAppsSettings />
       <SettingsSection id="browser" title="Browser">
         <AgentBrowserAccessSetting />
         {previewDefaultsDisabled ? (

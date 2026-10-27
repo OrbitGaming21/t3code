@@ -1,3 +1,5 @@
+import { ConnectedAppsToolkit } from "./toolkits/connectedApps/tools.ts";
+import * as ConnectedAppsHandlers from "./toolkits/connectedApps/handlers.ts";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -1048,6 +1050,7 @@ export const layer = Layer.mergeAll(
   layerAttachmentToolkit,
   layerProjectRegistration,
   layerEnvironmentToolkit,
+  toolkitRegistration(ConnectedAppsToolkit, ConnectedAppsHandlers.layer),
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,

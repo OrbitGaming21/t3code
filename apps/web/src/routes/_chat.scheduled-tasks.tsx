@@ -9,7 +9,7 @@ import {
   validateSettingsRouteSearch,
 } from "../components/settings/settingsScopeNavigation";
 import { useOverviewEnvironmentId } from "../components/usage/UsageOverview";
-import { ScheduledUsageCeiling } from "../components/usage/ScheduledUsageCeiling";
+import { PromptUsageBudgetSettings } from "../components/usage/PromptUsageBudgetSettings";
 
 function ScheduledTasksPage() {
   const search = Route.useSearch();
@@ -31,7 +31,7 @@ function ScheduledTasksPage() {
             <h1 className="text-sm font-medium">Scheduled tasks</h1>
             <div className="ms-auto flex shrink-0 items-center gap-3 text-xs">
               {ceilingEnvironmentId ? (
-                <ScheduledUsageCeiling environmentId={ceilingEnvironmentId} compact inline />
+                <PromptUsageBudgetSettings environmentId={ceilingEnvironmentId} compact inline />
               ) : null}
               <AppRouteModalClose />
             </div>

@@ -1,4 +1,5 @@
-import * as ScheduledTaskUsagePolicy from "../scheduledTasks/ScheduledTaskUsagePolicy.ts";
+import * as PromptUsageBudget from "../usage/PromptUsageBudget.ts";
+import * as PromptUsageBudgetWorker from "./PromptUsageBudgetWorker.ts";
 import * as GuestShareService from "../guest/GuestShareService.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
@@ -152,6 +153,7 @@ const layerProviderAuthServiceProvided = ProviderAuthService.layer.pipe(
 );
 
 const layerRunExecutionServiceProvided = RunExecutionService.layer.pipe(
+  Layer.provide(PromptUsageBudget.layer),
   Layer.provide(
     Layer.mergeAll(
       McpAppModelContext.layer,
@@ -286,7 +288,6 @@ const layerSecretRequestsProvided = SecretRequests.layer.pipe(
   Layer.provide(layerThreadManagementProvided),
 );
 const layerScheduledTaskProvided = ScheduledTaskService.layer.pipe(
-  Layer.provide(ScheduledTaskUsagePolicy.layer.pipe(Layer.provide(layerThreadManagementProvided))),
   Layer.provide(
     Layer.mergeAll(
       layerThreadLaunchProvided,
@@ -382,6 +383,10 @@ export const layerProduction = Layer.mergeAll(
         layerOrchestratorProvided,
       ),
     ),
+  ),
+  PromptUsageBudgetWorker.layer.pipe(
+    Layer.provide(layerOrchestratorProvided),
+    Layer.provide(PromptUsageBudget.layer),
   ),
   layerProviderContinuationWorkerProvided,
   layerAgentSessionImporterProvided,

@@ -12,6 +12,23 @@ becomes an attachment when inserting it would exceed the message limit. On a
 hardware keyboard, use `Cmd+Shift+V` on Apple devices or `Ctrl+Shift+V` elsewhere
 to keep a large paste editable in the composer instead.
 
+## Chat without a project
+
+On web and desktop, choose **Chat** in the sidebar, then **New chat** to ask a question
+without selecting a code project. Choose your provider and model from the menu at the top.
+Your conversations stay in the chat history. The menu beside the model contains reasoning
+and access settings; **Chat tools** opens the optional panels. Choose **Code** in the sidebar
+to return to your project threads.
+
+Choose **Chat billing** at the top to use your ChatGPT subscription or API credits.
+New chats prefer subscription billing; OpenAI’s plan limits still apply. API credits
+require a separate Codex instance authenticated with an API key. In **Settings → Providers**,
+connect an existing Codex CLI profile that uses API-key authentication, keeping its home
+separate from your subscription profile. Switching billing selects the corresponding
+connected instance; it never automatically falls back to API charges. Conversation
+history has no app-imposed chat count limit. API-billed prompts do not use the subscription
+ceiling setting.
+
 ## Formatting
 
 The composer writes Markdown and shows it styled as you type. Markers such as
@@ -353,3 +370,18 @@ including filenames or folders containing `#` or `?`.
 
 On mobile, select a PDF attachment or link to open it. iOS uses the native viewer;
 Android opens a compatible installed file viewer.
+
+## Use connected apps
+
+On web and desktop, open **Settings → Integrations → Connected apps**. Add a name and
+an app’s remote MCP server URL, then choose **Sign in**. Complete the app’s login in your
+browser, return to T3 Code, and choose **Refresh**. Your agents can then discover and use
+the app’s tools in Chat or coding threads when you ask them to.
+
+Connections are saved on the selected environment and work for clients connected to that
+environment. This first version supports remote MCP over HTTP with automatic OAuth client
+registration, plus servers that need no login. Apps requiring a preconfigured OAuth client
+or an API key are not supported yet.
+
+Choose **Remove** to delete a connection and its saved credentials from the environment.
+To revoke the app’s authorization too, use the app’s own account settings.

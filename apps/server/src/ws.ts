@@ -1,3 +1,4 @@
+import * as ConnectedApps from "./connectedApps/ConnectedApps.ts";
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -1281,6 +1282,7 @@ export const layerWsRpc = (
       const commandOutputHub = yield* CommandOutputHub.CommandOutputHub;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
+      const connectedApps = yield* ConnectedApps.ConnectedApps;
       const secretRequests = yield* SecretRequests.SecretRequests;
       const guestShares = yield* GuestShareService.GuestShareService;
       const pullRequests = yield* PullRequestService.PullRequestService;
@@ -2177,6 +2179,10 @@ export const layerWsRpc = (
               Effect.as(commandOutputHub.subscribe(input)),
             ),
           ),
+        [WS_METHODS.connectedAppsList]: () => connectedApps.list,
+        [WS_METHODS.connectedAppsAdd]: (input) => connectedApps.add(input),
+        [WS_METHODS.connectedAppsRemove]: (input) => connectedApps.remove(input.id),
+        [WS_METHODS.connectedAppsSignIn]: (input) => connectedApps.signIn(input),
         [WS_METHODS.scheduledTasksList]: (_input) =>
           scheduledTasks.list().pipe(Effect.map(withVisibleWebhookUrls)),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>

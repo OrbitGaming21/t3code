@@ -1,3 +1,4 @@
+import * as PromptUsageBudget from "../usage/PromptUsageBudget.ts";
 import { makeAssistantStreamingFilter } from "./assistantStreaming.ts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import {
@@ -594,6 +595,7 @@ export const layer: Layer.Layer<
   | EventSink.EventSinkV2
   | IdAllocator.IdAllocatorV2
   | ProviderEventIngestor.ProviderEventIngestorV2
+  | PromptUsageBudget.PromptUsageBudget
   | ServerSettings.ServerSettingsService
   | McpAppModelContext.McpAppModelContext
   | PreviewAgentActivity.PreviewAgentActivity
@@ -607,6 +609,7 @@ export const layer: Layer.Layer<
     const idAllocator = yield* IdAllocator.IdAllocatorV2;
     const providerEventIngestor = yield* ProviderEventIngestor.ProviderEventIngestorV2;
     const serverSettings = yield* ServerSettings.ServerSettingsService;
+    const promptUsageBudget = yield* PromptUsageBudget.PromptUsageBudget;
     const mcpAppModelContext = yield* McpAppModelContext.McpAppModelContext;
     const previewAgentActivity = yield* PreviewAgentActivity.PreviewAgentActivity;
     const turnItemPositions = yield* TurnItemPositionStore.TurnItemPositionStoreV2;
@@ -1675,11 +1678,21 @@ export const layer: Layer.Layer<
               }),
             ))
           : input.session.startTurn(turnInput);
-        yield* Effect.andThen(shouldStart, startTurn).pipe(
+        yield* Effect.andThen(
+          shouldStart,
+          promptUsageBudget
+            .begin({
+              threadId: input.run.threadId,
+              runId: input.run.id,
+              instanceId: input.modelSelection.instanceId,
+            })
+            .pipe(Effect.andThen(startTurn)),
+        ).pipe(
           // Wait for acceptance so abandoned startup cannot leave a refresher
           // on the already-detached ingestion fiber.
           Effect.tap(() =>
             Fiber.await(providerEventFiber).pipe(
+              Effect.ensuring(promptUsageBudget.end(input.run.id)),
               Effect.raceFirst(touchMcpCredential.pipe(Effect.delay("1 hour"), Effect.forever)),
               Effect.forkDetach,
             ),
@@ -1689,6 +1702,7 @@ export const layer: Layer.Layer<
               runId: input.run.id,
               cause,
             }).pipe(
+              Effect.andThen(promptUsageBudget.end(input.run.id)),
               Effect.andThen(Fiber.interrupt(providerEventFiber)),
               Effect.andThen(Ref.get(latestProviderThread)),
               Effect.flatMap((providerThread) =>

@@ -1,3 +1,6 @@
+import * as ConnectedApps from "./connectedApps/ConnectedApps.ts";
+import * as ConnectedAppClient from "./connectedApps/ConnectedAppClient.ts";
+import * as ConnectedAppsHttp from "./connectedApps/ConnectedAppsHttp.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay";
 import * as Random from "effect/Random";
@@ -701,6 +704,11 @@ const layerCommandReadiness = HttpRouter.middleware(
   { global: true },
 );
 
+const layerConnectedApps = ConnectedApps.layer.pipe(
+  Layer.provide(ConnectedAppClient.layer),
+  Layer.provide(ServerSecretStore.layer),
+);
+
 const layerMakeRoutes = Layer.mergeAll(
   Layer.mergeAll(
     HttpApiBuilder.layer(EnvironmentHttpApi).pipe(
@@ -718,6 +726,7 @@ const layerMakeRoutes = Layer.mergeAll(
     ServerHttp.layerAssetRoute,
     ServerHttp.layerAttachmentUploadRoute,
     GuestHttp.layer,
+    ConnectedAppsHttp.layer,
     DeviceHubProxy.layer,
     ServerBrowserStream.routeLayer,
     ServerHttp.layerStaticAndDevRoute,
@@ -1047,6 +1056,7 @@ const layerMakeServer = Layer.unwrap(
       disableLogger: !config.logWebSocketEvents,
       routerConfig: HTTP_ROUTER_CONFIG,
     }).pipe(
+      Layer.provide(layerConnectedApps),
       withUntracedRequests,
       Layer.tap(() => Deferred.succeed(routesReady, undefined).pipe(Effect.orDie)),
     );

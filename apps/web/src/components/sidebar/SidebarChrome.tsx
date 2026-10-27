@@ -1,3 +1,5 @@
+import { useScratchProject } from "../../hooks/useScratchProject";
+import { usePrimaryEnvironmentId } from "../../state/environments";
 import { UsageOverviewMenu } from "../usage/UsageOverview";
 import {
   ArrowLeftIcon,
@@ -5,6 +7,7 @@ import {
   ChartNoAxesColumnIcon,
   ChevronDownIcon,
   SettingsIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
@@ -121,17 +124,19 @@ function SidebarUtilityItem({
   icon,
   label,
   onClick,
+  disabled,
 }: {
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <SidebarMenuItem className="shrink-0">
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarMenuButton aria-label={label} onClick={onClick} size="icon">
+            <SidebarMenuButton aria-label={label} onClick={onClick} size="icon" disabled={disabled}>
               {icon}
             </SidebarMenuButton>
           }
@@ -150,6 +155,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
   const pullRequestsSupported = usePullRequestsSupported();
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const { scratchEnvironmentId, startScratchThread } = useScratchProject();
+  const chatEnvironmentId = scratchEnvironmentId(primaryEnvironmentId);
   const closeMobileSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -195,6 +203,15 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </SidebarMenuItem>
       ) : (
         <>
+          <SidebarUtilityItem
+            icon={<MessageCircleIcon />}
+            label="Chat"
+            disabled={chatEnvironmentId === null}
+            onClick={() => {
+              closeMobileSidebar();
+              if (chatEnvironmentId !== null) void startScratchThread(chatEnvironmentId);
+            }}
+          />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"

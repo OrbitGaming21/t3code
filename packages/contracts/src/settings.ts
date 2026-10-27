@@ -306,7 +306,42 @@ export type ModelPreferences = {
   readonly providerModelPreferences: typeof ProviderModelPreferences.Type;
 };
 
+export const UsageDisplaySection = Schema.Literals(["limits", "tokens", "tasks", "ceiling"]);
+export type UsageDisplaySection = typeof UsageDisplaySection.Type;
+const UsageDisplayOrder = Schema.Array(UsageDisplaySection).check(
+  Schema.makeFilter(
+    (items) =>
+      (items.length === 4 && new Set(items).size === 4) ||
+      "Include each usage section exactly once.",
+  ),
+);
+export const UsageDisplaySettingsSchema = Schema.Struct({
+  barSize: Schema.Literals(["compact", "comfortable", "large"]),
+  menuSize: Schema.Literals(["compact", "comfortable", "large"]),
+  alignment: Schema.Literals(["start", "center", "end"]),
+  visible: Schema.Boolean,
+  order: UsageDisplayOrder,
+  hidden: Schema.Array(UsageDisplaySection),
+});
+export type UsageDisplaySettings = typeof UsageDisplaySettingsSchema.Type;
+export const DEFAULT_USAGE_DISPLAY_SETTINGS: UsageDisplaySettings = {
+  barSize: "comfortable",
+  menuSize: "comfortable",
+  alignment: "start",
+  visible: true,
+  order: ["limits", "tokens", "tasks", "ceiling"],
+  hidden: [],
+};
+export const ChatBillingPreference = Schema.Literals(["subscription", "api-credits"]);
+export type ChatBillingPreference = typeof ChatBillingPreference.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
+  usageDisplay: UsageDisplaySettingsSchema.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_USAGE_DISPLAY_SETTINGS)),
+  ),
+  chatBillingPreference: ChatBillingPreference.pipe(
+    Schema.withDecodingDefault(Effect.succeed("subscription" as const)),
+  ),
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
   ),
@@ -1254,7 +1289,7 @@ export const ServerSettings = Schema.Struct({
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
-  scheduledTaskUsageCeilingPercent: Schema.NullOr(
+  promptUsageBudgetPercent: Schema.NullOr(
     Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   ).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   cursorKeychainUsageEnabled: Schema.Boolean.pipe(
@@ -1565,7 +1600,7 @@ export const ServerSettingsPatch = Schema.Struct({
   usageLimitSources: Schema.optionalKey(
     Schema.Record(UsageLimitSourceId, Schema.NullOr(UsageLimitSourceConfig)),
   ),
-  scheduledTaskUsageCeilingPercent: Schema.optionalKey(
+  promptUsageBudgetPercent: Schema.optionalKey(
     Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
   ),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
@@ -1613,6 +1648,8 @@ export function requiredScopesForProjectMutation(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  usageDisplay: Schema.optionalKey(UsageDisplaySettingsSchema),
+  chatBillingPreference: Schema.optionalKey(ChatBillingPreference),
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
   diffColorScheme: Schema.optionalKey(DiffColorScheme),
