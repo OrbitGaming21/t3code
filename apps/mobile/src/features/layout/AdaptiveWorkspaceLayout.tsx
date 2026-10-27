@@ -98,6 +98,7 @@ import {
 import { workspaceTabNavigationState } from "../workspace/workspace-tab-navigation";
 import type { WorkspaceTab } from "../workspace/workspace-tabs-state";
 import { workspaceRoutesOf } from "./workspace-overlay-routes";
+import { isSinglePageTab } from "../workspace/navigation-tab-order";
 
 export { useAdaptiveWorkspaceLayout };
 
@@ -207,7 +208,8 @@ function AdaptiveWorkspaceLayoutContent(
   const androidSettingsOpen = useAndroidWorkspaceRoot()?.settingsOpen ?? false;
   const safeAreaInsets = useSafeAreaInsets();
   const workspacePage =
-    Platform.OS === "android" && (androidSettingsOpen || workspace?.state.selectedTab === "usage");
+    Platform.OS === "android" &&
+    (androidSettingsOpen || (workspace != null && isSinglePageTab(workspace.state.selectedTab)));
   const navigation = useNavigation();
   const activeRoleOwner = useRef<symbol | null>(null);
   const [primarySidebarPreferredVisible, setPrimarySidebarPreferredVisible] = useState(true);

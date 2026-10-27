@@ -169,8 +169,10 @@ for today's token total, reported provider limits, and scheduled tasks. The over
 the current thread's environment, or your primary environment outside a thread. Use the
 refresh button to update token totals from available history. On the macOS desktop app, the
 same summary also appears under **T3 Code** in the menu bar while the app is running.
+The bottom panel is hidden on narrow screens; open **T3 Code** or the **Scheduled tasks**
+screen from the sidebar instead.
 
-Set **Scheduled usage ceiling** in the overview or **Settings → Scheduled tasks** to hold
+Set **Scheduled usage ceiling** in the overview or on the **Scheduled tasks** screen to hold
 new scheduled runs when any quota window for their provider reaches that percentage.
 The setting applies to the selected environment, including webhook tasks and **Run now**.
 It uses overall account usage, including work outside scheduled tasks. Clear the field and

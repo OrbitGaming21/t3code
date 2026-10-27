@@ -2,9 +2,14 @@ import { useNavigate, type AnyRouter } from "@tanstack/react-router";
 
 import { GUEST_PAGE_PATH } from "../../guestPage";
 
-/** Settings and Usage open as modals over the last main-app view. */
+/** Settings, Usage, and Scheduled tasks open as modals over the last main-app view. */
 export function isAppModalPage(pathname: string) {
-  return pathname === "/settings" || pathname.startsWith("/settings/") || pathname === "/usage";
+  return (
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    pathname === "/usage" ||
+    pathname === "/scheduled-tasks"
+  );
 }
 
 export function isSidebarUtilityPage(pathname: string) {

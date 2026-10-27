@@ -62,9 +62,7 @@ branch name remains.
 
 ## Scheduled tasks on mobile
 
-Open **Settings → Scheduled tasks** to create recurring tasks or manage existing
-ones across your connected environments. Use the settings filter to narrow the
-list by environment or project. Each task runs on the environment you choose,
+Open the **Scheduled** tab to create recurring tasks or manage existing ones across your connected environments. Use the filter to narrow the list by environment or project. Each task runs on the environment you choose,
 using its project, model, and workspace settings. Fixed-time schedules use that
 environment's time zone, which may differ from your phone's.
 
@@ -78,7 +76,7 @@ Leaving an edited form asks before discarding unsaved changes.
 
 ## Webhook automations
 
-In **Settings → Scheduled tasks**, choose **On webhook**
+On the **Scheduled tasks** screen, choose **On webhook**
 as a task's schedule to run it whenever another service calls its URL, such as
 GitHub on a new pull request or a CI job that failed. A public URL needs a
 [T3 Connect](remote-access.md) managed tunnel; after you save the task, copy

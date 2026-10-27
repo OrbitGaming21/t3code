@@ -47,6 +47,7 @@ import {
 } from "./useSystemWorkspaceTabBar";
 import { openSettings } from "../settings/settings-navigation";
 import { useSelectWorkspaceTab } from "./useSelectWorkspaceTab";
+import { isSinglePageTab } from "./navigation-tab-order";
 
 const TAB_TITLES = WORKSPACE_TAB_LABELS;
 
@@ -111,7 +112,7 @@ function WorkspaceRootContent() {
   const settingsOpen = workspace.settingsOpen;
   const tab = state.tabs[settingsOpen ? "settings" : state.selectedTab];
   const bottomClearance =
-    layout.primarySidebarOverlaysContent && state.selectedTab === "usage"
+    layout.primarySidebarOverlaysContent && isSinglePageTab(state.selectedTab)
       ? workspaceDockBottomClearance({ bottomInset: insets.bottom, keyboardHeight })
       : Platform.OS === "ios" && isDuoDevice(deviceType)
         ? workspaceSearchBottomClearance({
@@ -168,7 +169,7 @@ function WorkspaceRootContent() {
               // Beside a detail column the tab bar names the tab and the detail header the page,
               // so the sidebar keeps the brand.
               headerTitle:
-                sidebarNavigation || (!settingsOpen && state.selectedTab !== "usage")
+                sidebarNavigation || (!settingsOpen && !isSinglePageTab(state.selectedTab))
                   ? renderHeaderTitle
                   : undefined,
             }}

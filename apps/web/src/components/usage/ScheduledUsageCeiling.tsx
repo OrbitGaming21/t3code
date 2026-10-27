@@ -10,9 +10,12 @@ import { Label } from "../ui/label";
 export function ScheduledUsageCeiling({
   environmentId,
   compact = false,
+  inline = false,
 }: {
   environmentId: EnvironmentId;
   compact?: boolean;
+  /** Label beside the field, for toolbars. */
+  inline?: boolean;
 }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
@@ -35,7 +38,7 @@ export function ScheduledUsageCeiling({
     setSaving(false);
   };
   return (
-    <div className="space-y-1">
+    <div className={inline ? "flex items-center gap-2" : "space-y-1"}>
       <Label>{compact ? "Scheduled ceiling" : "Scheduled usage ceiling"}</Label>
       <div className="flex items-center gap-2">
         <div className="w-20">

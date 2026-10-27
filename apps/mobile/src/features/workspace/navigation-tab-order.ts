@@ -1,4 +1,4 @@
-export const NAVIGATION_TAB_ORDER = ["threads", "pullRequests", "usage"] as const;
+export const NAVIGATION_TAB_ORDER = ["threads", "pullRequests", "usage", "scheduled"] as const;
 export type NavigationTab = (typeof NAVIGATION_TAB_ORDER)[number];
 
 export function navigationCustomizationAvailable(
@@ -11,7 +11,13 @@ export const NAVIGATION_TAB_LABELS: Readonly<Record<NavigationTab, string>> = {
   threads: "Threads",
   pullRequests: "Pulls",
   usage: "Usage",
+  scheduled: "Scheduled",
 };
+
+/** Usage and Scheduled fill the workspace instead of pairing a list with a detail column. */
+export function isSinglePageTab(tab: string): tab is "usage" | "scheduled" {
+  return tab === "usage" || tab === "scheduled";
+}
 
 function isNavigationTab(value: unknown): value is NavigationTab {
   return NAVIGATION_TAB_ORDER.some((tab) => tab === value);

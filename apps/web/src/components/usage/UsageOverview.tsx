@@ -25,7 +25,7 @@ import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { PROVIDER_PRESENTATION } from "./usageProviders";
 
-function useOverviewEnvironmentId() {
+export function useOverviewEnvironmentId() {
   const target = useThreadRouteTarget();
   const primary = usePrimaryEnvironmentId();
   return target?.kind === "server" ? target.threadRef.environmentId : primary;
@@ -48,7 +48,7 @@ export function UsageOverviewFooter() {
   return (
     <footer
       aria-label="Usage and scheduled tasks"
-      className="fixed inset-x-0 bottom-0 z-20 h-18 overflow-x-auto border-t border-border bg-background px-4 py-2"
+      className="fixed inset-x-0 bottom-0 z-20 hidden h-18 md:block overflow-x-auto border-t border-border bg-background px-4 py-2"
     >
       <UsageOverview compact />
     </footer>
@@ -209,7 +209,7 @@ function EnvironmentOverview({
         <section className="w-56 shrink-0 space-y-0.5">
           <h2>
             <Link
-              to="/settings/scheduled-tasks"
+              to="/scheduled-tasks"
               search={{ environmentId }}
               className="font-medium hover:underline"
             >
@@ -248,7 +248,7 @@ function EnvironmentOverview({
         <Button
           size="xs"
           variant="outline"
-          render={<Link to="/settings/scheduled-tasks" search={{ environmentId }} />}
+          render={<Link to="/scheduled-tasks" search={{ environmentId }} />}
         >
           Schedule / manage tasks
         </Button>

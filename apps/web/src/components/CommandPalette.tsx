@@ -52,6 +52,7 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
+  CalendarClockIcon,
   ChartNoAxesColumnIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -1593,6 +1594,17 @@ function OpenCommandPaletteDialog(props: {
     shortcutCommand: "usage.open",
     run: async () => {
       await navigate({ to: "/usage" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:scheduled-tasks",
+    searchTerms: ["scheduled", "tasks", "schedule", "cron", "automation", "recurring"],
+    title: "Open scheduled tasks",
+    icon: <CalendarClockIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/scheduled-tasks" });
     },
   });
 

@@ -281,7 +281,7 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
     registerMenuAction("open-usage", () => void router.navigate({ to: "/usage" })),
     registerMenuAction(
       "open-scheduled-tasks",
-      () => void router.navigate({ to: "/settings/scheduled-tasks" }),
+      () => void router.navigate({ to: "/scheduled-tasks" }),
     ),
   ];
   return () => {
@@ -415,7 +415,6 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       : {}
   ) as CSSProperties;
   const sidebarProviderStyle = {
-    "--workspace-bottom-inset": "4.5rem",
     "--sidebar-width": `${clampThreadSidebarWidth(sidebarWidth, sidebarMinimumWidth, sidebarMaximumWidth)}px`,
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...windowControlsInsetStyle,
@@ -424,7 +423,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
-        className="h-[calc(100dvh-4.5rem)]! min-h-0! [&>[data-slot=sidebar-inset]]:h-full"
+        className="h-[calc(100dvh-var(--workspace-bottom-inset))]! min-h-0! [--workspace-bottom-inset:0px] md:[--workspace-bottom-inset:4.5rem] [&>[data-slot=sidebar-inset]]:h-full"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}
