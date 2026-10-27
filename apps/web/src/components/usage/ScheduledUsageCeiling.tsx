@@ -36,10 +36,11 @@ export function ScheduledUsageCeiling({
   };
   return (
     <div className="space-y-1">
-      <Label>Scheduled usage ceiling</Label>
+      <Label>{compact ? "Scheduled ceiling" : "Scheduled usage ceiling"}</Label>
       <div className="flex items-center gap-2">
         <div className="w-20">
           <Input
+            size={compact ? "compact" : "default"}
             aria-label="Scheduled usage ceiling percent"
             type="number"
             min={0}
@@ -65,13 +66,13 @@ export function ScheduledUsageCeiling({
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>
-      <p className="text-muted-foreground">
-        {!valid
-          ? "Enter 0–100, or clear to disable."
-          : compact
-            ? "Stops new runs at this usage. Blank = off."
+      {!valid || !compact ? (
+        <p className="text-muted-foreground">
+          {!valid
+            ? "Enter 0–100, or clear to disable."
             : "Stops new scheduled runs when any provider limit reaches this percentage. Running tasks can exceed it. Missing limits hold runs. Clear to disable; 0 pauses all scheduled runs."}
-      </p>
+        </p>
+      ) : null}
     </div>
   );
 }

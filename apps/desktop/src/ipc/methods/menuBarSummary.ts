@@ -1,35 +1,30 @@
 import * as Electron from "electron";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 
-import * as ElectronWindow from "../../electron/ElectronWindow.ts";
+import * as DesktopWindow from "../../window/DesktopWindow.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
 import { SET_MENU_BAR_SUMMARY_CHANNEL } from "../channels.ts";
 
 const MenuBarSummary = Schema.Struct({
-  lines: Schema.Array(Schema.String.check(Schema.isMaxLength(200))).check(Schema.isMaxLength(24)),
+  items: Schema.Array(
+    Schema.Struct({
+      label: Schema.String.check(Schema.isMaxLength(200)),
+      action: Schema.Literals(["open-usage", "open-scheduled-tasks"]),
+    }),
+  ).check(Schema.isMaxLength(24)),
 });
 
 export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummary")(function* () {
   const ipc = yield* DesktopIpc.DesktopIpc;
   const platform = yield* HostProcess.Platform;
-  const electronWindow = yield* ElectronWindow.ElectronWindow;
+  const desktopWindow = yield* DesktopWindow.DesktopWindow;
   const runPromise = Effect.runPromiseWith(yield* Effect.context<never>());
   let tray: Electron.Tray | null = null;
 
-  const open = () => {
-    void runPromise(
-      electronWindow.main.pipe(
-        Effect.flatMap(
-          Option.match({
-            onNone: () => Effect.void,
-            onSome: (window) => electronWindow.reveal(window),
-          }),
-        ),
-      ),
-    );
+  const dispatch = (action: string) => () => {
+    void runPromise(desktopWindow.dispatchMenuAction(action).pipe(Effect.ignore));
   };
 
   yield* ipc.handle(
@@ -37,7 +32,7 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
       channel: SET_MENU_BAR_SUMMARY_CHANNEL,
       payload: MenuBarSummary,
       result: Schema.Void,
-      handler: ({ lines }) =>
+      handler: ({ items }) =>
         Effect.sync(() => {
           if (platform !== "darwin") return;
           if (tray === null || tray.isDestroyed()) {
@@ -46,9 +41,9 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
           }
           tray.setContextMenu(
             Electron.Menu.buildFromTemplate([
-              ...lines.map((label) => ({ label, enabled: false })),
+              ...items.map(({ label, action }) => ({ label, click: dispatch(action) })),
               { type: "separator" },
-              { label: "Open T3 Code", click: open },
+              { label: "Open T3 Code", click: dispatch("open-app") },
             ]),
           );
         }),

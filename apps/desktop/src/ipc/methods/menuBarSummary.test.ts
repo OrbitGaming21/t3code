@@ -9,6 +9,7 @@ const native = vi.hoisted(() => ({
   destroy: vi.fn(),
   Tray: vi.fn(),
   buildFromTemplate: vi.fn((template: unknown) => template),
+  dispatched: [] as string[],
 }));
 vi.mock("electron", () => ({
   Tray: native.Tray,
@@ -16,12 +17,13 @@ vi.mock("electron", () => ({
   nativeImage: { createEmpty: () => ({}) },
 }));
 
-import * as ElectronWindow from "../../electron/ElectronWindow.ts";
+import * as DesktopWindow from "../../window/DesktopWindow.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
 import { installMenuBarSummary } from "./menuBarSummary.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  native.dispatched.length = 0;
   native.Tray.mockImplementation(function (this: object) {
     Object.assign(this, {
       setTitle: native.setTitle,
@@ -44,10 +46,12 @@ const run = (
     }),
   ).pipe(
     Effect.provideService(HostProcess.Platform, platform),
-    Effect.provideService(ElectronWindow.ElectronWindow, {
-      main: Effect.succeedNone,
-      reveal: () => Effect.void,
-    } as never),
+    Effect.provideService(
+      DesktopWindow.DesktopWindow,
+      DesktopWindow.DesktopWindow.of({
+        dispatchMenuAction: (action: string) => Effect.sync(() => native.dispatched.push(action)),
+      } as unknown as DesktopWindow.DesktopWindow["Service"]),
+    ),
     Effect.provide(
       DesktopIpc.layer({
         handle: (channel, handler) => {
@@ -67,16 +71,24 @@ it.effect("shows the summary under a T3 Code menu bar title and removes it on di
   Effect.gen(function* () {
     const event = { sender: { id: 1 } };
     yield* run("darwin", (handler) => {
-      void handler(event, { lines: ["Tokens today: 1.2K"] });
-      void handler(event, { lines: ["Tokens today: 2.4K"] });
+      void handler(event, { items: [{ label: "Tokens today: 1.2K", action: "open-usage" }] });
+      void handler(event, {
+        items: [{ label: "Scheduled: 1 active", action: "open-scheduled-tasks" }],
+      });
     });
     expect(native.Tray).toHaveBeenCalledTimes(1);
     expect(native.setTitle).toHaveBeenCalledWith("T3 Code");
-    expect(native.buildFromTemplate).toHaveBeenLastCalledWith([
-      { label: "Tokens today: 2.4K", enabled: false },
-      { type: "separator" },
-      { label: "Open T3 Code", click: expect.any(Function) },
+    const [items] = native.buildFromTemplate.mock.lastCall as [
+      { label?: string; click?: () => void }[],
+    ];
+    expect(items.map((item) => item.label)).toEqual([
+      "Scheduled: 1 active",
+      undefined,
+      "Open T3 Code",
     ]);
+    items[0]!.click!();
+    items[2]!.click!();
+    expect(native.dispatched).toEqual(["open-scheduled-tasks", "open-app"]);
     expect(native.destroy).toHaveBeenCalledTimes(1);
   }),
 );
@@ -85,12 +97,14 @@ it.effect("ignores the summary outside macOS and rejects oversized input", () =>
   Effect.gen(function* () {
     const event = { sender: { id: 1 } };
     yield* run("linux", (handler) => {
-      void handler(event, { lines: ["Tokens today: 1.2K"] });
+      void handler(event, { items: [{ label: "Tokens today: 1.2K", action: "open-usage" }] });
     });
     expect(native.Tray).not.toHaveBeenCalled();
     yield* run("darwin", (handler) => {
       return expect(
-        handler(event, { lines: Array.from({ length: 25 }, () => "x") }),
+        handler(event, {
+          items: Array.from({ length: 25 }, () => ({ label: "x", action: "open-usage" })),
+        }),
       ).rejects.toBeDefined();
     });
   }),

@@ -278,6 +278,11 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
       if (!/^\/settings(\/|$)/.test(router.state.location.pathname))
         void router.navigate({ to: "/settings" });
     }),
+    registerMenuAction("open-usage", () => void router.navigate({ to: "/usage" })),
+    registerMenuAction(
+      "open-scheduled-tasks",
+      () => void router.navigate({ to: "/settings/scheduled-tasks" }),
+    ),
   ];
   return () => {
     for (const dispose of disposers) dispose();
@@ -410,7 +415,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       : {}
   ) as CSSProperties;
   const sidebarProviderStyle = {
-    "--workspace-bottom-inset": "7rem",
+    "--workspace-bottom-inset": "4.5rem",
     "--sidebar-width": `${clampThreadSidebarWidth(sidebarWidth, sidebarMinimumWidth, sidebarMaximumWidth)}px`,
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...windowControlsInsetStyle,
@@ -419,7 +424,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
-        className="h-[calc(100dvh-7rem)]! min-h-0! [&>[data-slot=sidebar-inset]]:h-full"
+        className="h-[calc(100dvh-4.5rem)]! min-h-0! [&>[data-slot=sidebar-inset]]:h-full"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}

@@ -12,6 +12,7 @@ import { formatTokens, makeWindow } from "@t3tools/shared/usageFormat";
 import { collectLimitAccounts, limitsNotice } from "@t3tools/shared/usageLimits";
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect } from "react";
+import type { DesktopBridge } from "@t3tools/contracts";
 
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
@@ -22,7 +23,6 @@ import { useEnvironmentScope } from "../../state/session";
 import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
-import { cn } from "../../lib/utils";
 import { PROVIDER_PRESENTATION } from "./usageProviders";
 
 function useOverviewEnvironmentId() {
@@ -48,7 +48,7 @@ export function UsageOverviewFooter() {
   return (
     <footer
       aria-label="Usage and scheduled tasks"
-      className="fixed inset-x-0 bottom-0 z-20 h-28 overflow-x-auto border-t border-border bg-background px-4 py-3"
+      className="fixed inset-x-0 bottom-0 z-20 h-18 overflow-x-auto border-t border-border bg-background px-4 py-2"
     >
       <UsageOverview compact />
     </footer>
@@ -110,125 +110,141 @@ function EnvironmentOverview({
     .toSorted((a, b) => a.nextRunAt!.localeCompare(b.nextRunAt!))[0];
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const ceiling = settings?.scheduledTaskUsageCeilingPercent ?? null;
-  const summary = [
-    `Tokens today: ${totalTokens === undefined ? "Unavailable" : formatTokens(totalTokens)}`,
+  const tokensLabel = totalTokens === undefined ? "Unavailable" : formatTokens(totalTokens);
+  const tokensStatus = !connected
+    ? "Disconnected"
+    : !canReadUsage
+      ? "Usage access required"
+      : usage.error
+        ? "Usage unavailable"
+        : usage.isPending
+          ? "Updating…"
+          : (environment?.label ?? "Current environment");
+  const tasksLabel =
+    activeTasks === undefined
+      ? tasks.error
+        ? "Tasks unavailable"
+        : "Unavailable"
+      : `${activeTasks.length} active · ${tasks.data!.tasks.length - activeTasks.length} paused`;
+  const nextLabel = next
+    ? `Next: ${new Date(next.nextRunAt!).toLocaleString()}`
+    : "No upcoming timed runs";
+  const menuBarItems = JSON.stringify([
+    { label: `Tokens today: ${tokensLabel}`, action: "open-usage" },
     ...accounts.flatMap((account) =>
-      account.limits.windows.map(
-        (limit) =>
-          `${account.displayName ?? account.driver} ${limit.label}: ${Math.round(limit.usedPercent)}% used`,
-      ),
+      account.limits.windows.map((limit) => ({
+        label: `${accountName(account)} ${limit.label}: ${Math.round(limit.usedPercent)}% used`,
+        action: "open-usage",
+      })),
     ),
-    activeTasks
-      ? `Scheduled: ${activeTasks.length} active · ${tasks.data!.tasks.length - activeTasks.length} paused`
-      : "Scheduled: Unavailable",
-    `Scheduled usage ceiling: ${ceiling === null ? "Off" : `${ceiling}%`}`,
-  ];
-  const summaryKey = summary.join("\n");
+    { label: `Scheduled: ${tasksLabel}`, action: "open-scheduled-tasks" },
+    {
+      label: `Scheduled usage ceiling: ${ceiling === null ? "Off" : `${ceiling}%`}`,
+      action: "open-scheduled-tasks",
+    },
+  ]);
   // The footer is always mounted, so it alone feeds the macOS menu bar dropdown.
   // oxlint-disable-next-line t3code/react-effect-budget -- syncs with the Electron menu bar
   useEffect(() => {
     if (!compact) return;
-    void window.desktopBridge?.setMenuBarSummary?.({ lines: summaryKey.split("\n") });
-  }, [compact, summaryKey]);
-  const sectionClass = compact ? "min-w-44 flex-1 space-y-1" : "space-y-2";
+    void window.desktopBridge?.setMenuBarSummary?.({
+      items: JSON.parse(menuBarItems) as MenuBarItems,
+    });
+  }, [compact, menuBarItems]);
+
+  const refreshButton = (
+    <Button
+      size="icon-xs"
+      variant="ghost"
+      aria-label="Refresh token usage"
+      disabled={!connected || !canReadUsage || usage.isPending}
+      onClick={usage.refresh}
+    >
+      <RefreshCwIcon />
+    </Button>
+  );
+  const limitSlots =
+    accounts.length === 0 ? (
+      <p className="text-muted-foreground">No provider limits available</p>
+    ) : (
+      accounts.map((account) => (
+        <section key={account.key} className={compact ? "w-52 shrink-0 space-y-0.5" : "space-y-1"}>
+          <h2 className={compact ? "font-medium" : "text-muted-foreground"}>
+            {compact ? `${accountName(account)} limits` : accountName(account)}
+          </h2>
+          <LimitRows limits={account.limits} checkedAt={account.limits.checkedAt} />
+        </section>
+      ))
+    );
+  const tasksBody = (
+    <>
+      <p>{tasksLabel}</p>
+      <p className="max-w-64 truncate text-muted-foreground">{nextLabel}</p>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex min-w-max items-start gap-6 text-xs">
+        {limitSlots}
+        <Popover>
+          <PopoverTrigger render={<Button size="xs" variant="outline" className="shrink-0" />}>
+            Tokens today · <span className="tabular-nums">{tokensLabel}</span>
+            <ChevronDownIcon />
+          </PopoverTrigger>
+          <PopoverPopup side="top" align="start">
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <h2 className="font-medium">Tokens today</h2>
+                {refreshButton}
+              </div>
+              <p className="text-lg font-semibold tabular-nums">{tokensLabel}</p>
+              <p className="text-muted-foreground">{tokensStatus}</p>
+              <Link to="/usage" className="text-primary underline underline-offset-2">
+                View usage details
+              </Link>
+            </div>
+          </PopoverPopup>
+        </Popover>
+        <section className="w-56 shrink-0 space-y-0.5">
+          <h2>
+            <Link
+              to="/settings/scheduled-tasks"
+              search={{ environmentId }}
+              className="font-medium hover:underline"
+            >
+              Scheduled tasks
+            </Link>
+          </h2>
+          {tasksBody}
+        </section>
+        <section className="shrink-0">
+          <ScheduledUsageCeiling environmentId={environmentId} compact />
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("text-xs", compact ? "flex min-w-max items-start gap-6" : "space-y-4")}>
-      <section className={sectionClass}>
+    <div className="space-y-4 text-xs">
+      <section className="space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="font-medium">Tokens today</h2>
-          <Button
-            size="icon-xs"
-            variant="ghost"
-            aria-label="Refresh token usage"
-            disabled={!connected || !canReadUsage || usage.isPending}
-            onClick={usage.refresh}
-          >
-            <RefreshCwIcon />
-          </Button>
+          {refreshButton}
         </div>
-        <p className="text-lg font-semibold tabular-nums">
-          {totalTokens === undefined ? "Unavailable" : formatTokens(totalTokens)}
-        </p>
-        <p className="text-muted-foreground">
-          {!connected
-            ? "Disconnected"
-            : !canReadUsage
-              ? "Usage access required"
-              : usage.error
-                ? "Usage unavailable"
-                : usage.isPending
-                  ? "Updating…"
-                  : (environment?.label ?? "Current environment")}
-        </p>
+        <p className="text-lg font-semibold tabular-nums">{tokensLabel}</p>
+        <p className="text-muted-foreground">{tokensStatus}</p>
       </section>
-      <section className={cn(sectionClass, compact && "max-h-22 min-w-64 overflow-y-auto")}>
+      <section className="space-y-2">
         <h2 className="font-medium">Usage limits</h2>
-        {accounts.length === 0 ? (
-          <p className="text-muted-foreground">No provider limits available</p>
-        ) : (
-          accounts.map((account) => {
-            const provider = Object.values(PROVIDER_PRESENTATION).find(
-              (item) => item.driverKind === account.driver,
-            );
-            const notice = limitsNotice(account.limits);
-            return (
-              <div key={account.key} className="space-y-1">
-                <p className="text-muted-foreground">
-                  {account.displayName ?? provider?.label ?? account.driver}
-                </p>
-                {notice ? (
-                  <p>{notice}</p>
-                ) : (
-                  account.limits.windows.map((limit) => (
-                    <Tooltip key={limit.id}>
-                      <TooltipTrigger
-                        render={<div className="flex items-center gap-2" tabIndex={0} />}
-                      >
-                        <span className="min-w-16">{limit.label}</span>
-                        <div
-                          className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
-                          role="meter"
-                          aria-label={`${limit.label} usage`}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={limit.usedPercent}
-                        >
-                          <div
-                            className="h-full rounded-full bg-primary"
-                            style={{ width: `${limit.usedPercent}%` }}
-                          />
-                        </div>
-                        <span className="tabular-nums">{Math.round(limit.usedPercent)}% used</span>
-                      </TooltipTrigger>
-                      <TooltipPopup>
-                        {limit.resetsAt
-                          ? `Resets ${new Date(limit.resetsAt).toLocaleString()}`
-                          : "Reset time unavailable"}
-                        . Reported {new Date(account.limits.checkedAt).toLocaleString()}.
-                      </TooltipPopup>
-                    </Tooltip>
-                  ))
-                )}
-              </div>
-            );
-          })
-        )}
+        {limitSlots}
         <Link to="/usage" className="text-primary underline underline-offset-2">
           View usage details
         </Link>
       </section>
-      <section className={sectionClass}>
+      <section className="space-y-2">
         <h2 className="font-medium">Scheduled tasks</h2>
-        <p>
-          {activeTasks === undefined
-            ? tasks.error
-              ? "Tasks unavailable"
-              : "Unavailable"
-            : `${activeTasks.length} active · ${tasks.data!.tasks.length - activeTasks.length} paused`}
-        </p>
-        <p className="max-w-64 truncate text-muted-foreground">
-          {next ? `Next: ${new Date(next.nextRunAt!).toLocaleString()}` : "No upcoming timed runs"}
-        </p>
+        {tasksBody}
         <Button
           size="xs"
           variant="outline"
@@ -237,9 +253,54 @@ function EnvironmentOverview({
           Schedule / manage tasks
         </Button>
       </section>
-      <section className={cn(sectionClass, "max-w-80")}>
-        <ScheduledUsageCeiling environmentId={environmentId} compact={compact} />
+      <section className="max-w-80">
+        <ScheduledUsageCeiling environmentId={environmentId} />
       </section>
     </div>
   );
+}
+
+type MenuBarItems = Parameters<NonNullable<DesktopBridge["setMenuBarSummary"]>>[0]["items"];
+
+type LimitAccount = ReturnType<typeof collectLimitAccounts>[number];
+
+function accountName(account: LimitAccount) {
+  return (
+    account.displayName ??
+    Object.values(PROVIDER_PRESENTATION).find((item) => item.driverKind === account.driver)
+      ?.label ??
+    account.driver
+  );
+}
+
+function LimitRows({ limits, checkedAt }: { limits: LimitAccount["limits"]; checkedAt: string }) {
+  const notice = limitsNotice(limits);
+  if (notice) return <p>{notice}</p>;
+  return limits.windows.map((limit) => (
+    <Tooltip key={limit.id}>
+      <TooltipTrigger render={<div className="flex items-center gap-2" tabIndex={0} />}>
+        <span className="min-w-14">{limit.label}</span>
+        <div
+          className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
+          role="meter"
+          aria-label={`${limit.label} usage`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={limit.usedPercent}
+        >
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${limit.usedPercent}%` }}
+          />
+        </div>
+        <span className="tabular-nums">{Math.round(limit.usedPercent)}% used</span>
+      </TooltipTrigger>
+      <TooltipPopup>
+        {limit.resetsAt
+          ? `Resets ${new Date(limit.resetsAt).toLocaleString()}`
+          : "Reset time unavailable"}
+        . Reported {new Date(checkedAt).toLocaleString()}.
+      </TooltipPopup>
+    </Tooltip>
+  ));
 }

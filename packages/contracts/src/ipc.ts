@@ -1009,7 +1009,9 @@ export interface DesktopBridge {
   getClientPlatform?: () => string;
   setNotificationBadge?: (badge: { count: number; image: string | null }) => Promise<void>;
   /** macOS menu bar dropdown; other platforms ignore it. */
-  setMenuBarSummary?: (summary: { lines: readonly string[] }) => Promise<void>;
+  setMenuBarSummary?: (summary: {
+    items: readonly { label: string; action: "open-usage" | "open-scheduled-tasks" }[];
+  }) => Promise<void>;
   onNotificationBadgeClear?: (listener: () => void) => () => void;
   onTrackpadScrollEnd?: (listener: () => void) => () => void;
   /**
