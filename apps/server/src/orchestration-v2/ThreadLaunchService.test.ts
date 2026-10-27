@@ -1,3 +1,4 @@
+import * as ScheduledTaskUsagePolicy from "../scheduledTasks/ScheduledTaskUsagePolicy.ts";
 import * as DocumentText from "../provider/DocumentText.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
@@ -316,6 +317,9 @@ it.effect.each(
     const harness = makeHarness();
     const layerScheduledTasks = ScheduledTasks.layer.pipe(
       Layer.provide(
+        Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
+      ),
+      Layer.provide(
         Layer.mergeAll(
           harness.layer,
           NodeCrypto.layer,
@@ -381,6 +385,9 @@ it.effect(
     const harness = makeHarness();
     const layerScheduledTasks = ScheduledTasks.layer.pipe(
       Layer.provide(
+        Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
+      ),
+      Layer.provide(
         Layer.mergeAll(
           harness.layer,
           NodeCrypto.layer,
@@ -417,6 +424,9 @@ it.effect(
 it.effect("runs a thread-bound automation on the provider the thread uses now", () => {
   const harness = makeHarness({ adapters: [adapter, claudeAdapter] });
   const layerScheduledTasks = ScheduledTasks.layer.pipe(
+    Layer.provide(
+      Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
+    ),
     Layer.provide(
       Layer.mergeAll(
         harness.layer,
@@ -880,6 +890,9 @@ function scratchHarness() {
           } as never),
   });
   const layerScheduledTasks = ScheduledTasks.layer.pipe(
+    Layer.provide(
+      Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
+    ),
     Layer.provide(
       Layer.mergeAll(
         harness.layer,

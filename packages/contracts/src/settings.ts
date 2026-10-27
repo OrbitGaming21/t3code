@@ -1254,6 +1254,9 @@ export const ServerSettings = Schema.Struct({
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
+  scheduledTaskUsageCeilingPercent: Schema.NullOr(
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   cursorKeychainUsageEnabled: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
   ),
@@ -1561,6 +1564,9 @@ export const ServerSettingsPatch = Schema.Struct({
   // Merge per source to avoid racing other edits; null removes an entry.
   usageLimitSources: Schema.optionalKey(
     Schema.Record(UsageLimitSourceId, Schema.NullOr(UsageLimitSourceConfig)),
+  ),
+  scheduledTaskUsageCeilingPercent: Schema.optionalKey(
+    Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
   ),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
 

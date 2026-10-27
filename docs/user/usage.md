@@ -161,3 +161,22 @@ Use `Ctrl+Shift+1/2/3/4` (`Cmd+Shift+1/2/3/4` on macOS) for the past
 24 hours, 7 days, 30 days, or 90 days. Period shortcuts do nothing on Limits.
 Press `Escape` to return to the previous page. Customize these shortcuts in
 **Settings → Keybindings**.
+
+## Usage overview and scheduled usage ceiling
+
+On web and desktop, open **T3 Code** at the top of the sidebar or use the bottom panel
+for today's token total, reported provider limits, and scheduled tasks. The overview follows
+the current thread's environment, or your primary environment outside a thread. Use the
+refresh button to update token totals from available history. On the macOS desktop app, the
+same summary also appears under **T3 Code** in the menu bar while the app is running.
+
+Set **Scheduled usage ceiling** in the overview or **Settings → Scheduled tasks** to hold
+new scheduled runs when any quota window for their provider reaches that percentage.
+The setting applies to the selected environment, including webhook tasks and **Run now**.
+It uses overall account usage, including work outside scheduled tasks. Clear the field and
+save to disable it; 0 holds all scheduled runs.
+
+A held run appears as failed with an explanation and tries again at its next scheduled time.
+Providers without fresh usage reports are held while a ceiling is enabled. Work already
+running or queued can continue past the ceiling, so this is a launch limit rather than an
+exact token budget.

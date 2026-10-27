@@ -370,3 +370,22 @@ describe("server model preferences", () => {
     expect(decodeServerSettingsPatch(input)).toEqual(input);
   });
 });
+
+describe("scheduled task usage ceiling", () => {
+  it("defaults to disabled and accepts explicit zero and full quota", () => {
+    expect(decodeServerSettings({}).scheduledTaskUsageCeilingPercent).toBeNull();
+    for (const value of [null, 0, 50, 100]) {
+      expect(
+        decodeServerSettingsPatch({ scheduledTaskUsageCeilingPercent: value })
+          .scheduledTaskUsageCeilingPercent,
+      ).toBe(value);
+    }
+  });
+  it("rejects invalid percentages", () => {
+    for (const value of [-1, 101, 0.5, "50", Number.NaN]) {
+      expect(() =>
+        decodeServerSettingsPatch({ scheduledTaskUsageCeilingPercent: value }),
+      ).toThrow();
+    }
+  });
+});

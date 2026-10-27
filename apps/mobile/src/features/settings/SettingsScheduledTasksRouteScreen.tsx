@@ -1233,6 +1233,54 @@ function WebhookScheduleDetails({
   );
 }
 
+function ScheduledUsageCeiling({ environmentId }: { readonly environmentId: EnvironmentId }) {
+  const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
+  const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
+  const save = useAtomCommand(serverEnvironment.updateSettings, {
+    label: "scheduled usage ceiling",
+  });
+  const saved = settings?.scheduledTaskUsageCeilingPercent ?? null;
+  const [draft, setDraft] = useState<{ saved: number | null; value: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const value = draft?.saved === saved ? draft.value : saved === null ? "" : String(saved);
+  const percent = value.trim() === "" ? null : Number(value);
+  const valid = percent === null || (Number.isInteger(percent) && percent >= 0 && percent <= 100);
+  const commit = async () => {
+    if (!valid || percent === saved || !canSave || saving) return;
+    setSaving(true);
+    const result = await save({
+      environmentId,
+      input: { patch: { scheduledTaskUsageCeilingPercent: percent } },
+    });
+    if (result._tag === "Success") setDraft(null);
+    setSaving(false);
+  };
+  return (
+    <View className="gap-2 pb-3">
+      <FormField
+        label="Scheduled usage ceiling (%)"
+        value={value}
+        placeholder="Off"
+        keyboardType="number-pad"
+        disabled={!settings || !canSave || saving}
+        onChange={(value) => setDraft({ saved, value })}
+      />
+      <View className="gap-2 px-4">
+        <Text className="text-sm text-foreground-muted">
+          {valid
+            ? "Hold new runs when any provider quota reaches this percentage. Missing limits hold runs. Clear to disable; 0 pauses scheduled runs. Running work can exceed it."
+            : "Enter a whole number from 0 to 100, or clear to disable."}
+        </Text>
+        <Button
+          disabled={!valid || percent === saved || !canSave || saving}
+          onPress={() => void commit()}
+          label={saving ? "Saving…" : "Save usage ceiling"}
+        />
+      </View>
+    </View>
+  );
+}
+
 function EnvironmentTasks({
   environment,
   now,
@@ -1296,6 +1344,7 @@ function EnvironmentTasks({
         />
       }
     >
+      <ScheduledUsageCeiling environmentId={environmentId} />
       {tasks.error ? (
         <Text className="p-4 text-base text-danger-foreground">{tasks.error}</Text>
       ) : !tasks.data ? (

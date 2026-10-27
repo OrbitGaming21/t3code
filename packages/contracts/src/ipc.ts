@@ -1008,6 +1008,8 @@ export interface DesktopBridge {
   getPathForFile?: (file: File) => string;
   getClientPlatform?: () => string;
   setNotificationBadge?: (badge: { count: number; image: string | null }) => Promise<void>;
+  /** macOS menu bar dropdown; other platforms ignore it. */
+  setMenuBarSummary?: (summary: { lines: readonly string[] }) => Promise<void>;
   onNotificationBadgeClear?: (listener: () => void) => () => void;
   onTrackpadScrollEnd?: (listener: () => void) => () => void;
   /**

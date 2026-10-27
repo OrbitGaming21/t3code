@@ -1,3 +1,4 @@
+import * as ScheduledTaskUsagePolicy from "../scheduledTasks/ScheduledTaskUsagePolicy.ts";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import { limitRecoveryCommand } from "./UsageLimitRecoveryWorker.ts";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
@@ -304,6 +305,9 @@ const layerLegacyImportTest = RuntimeLayer.layer.pipe(
 );
 
 const layerScheduledTasksTest = ScheduledTaskService.layer.pipe(
+  Layer.provide(
+    Layer.mock(ScheduledTaskUsagePolicy.ScheduledTaskUsagePolicy)({ check: () => Effect.void }),
+  ),
   Layer.provide(
     Layer.mergeAll(
       Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),

@@ -1,3 +1,4 @@
+import * as ScheduledTaskUsagePolicy from "../scheduledTasks/ScheduledTaskUsagePolicy.ts";
 import * as GuestShareService from "../guest/GuestShareService.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
@@ -285,6 +286,7 @@ const layerSecretRequestsProvided = SecretRequests.layer.pipe(
   Layer.provide(layerThreadManagementProvided),
 );
 const layerScheduledTaskProvided = ScheduledTaskService.layer.pipe(
+  Layer.provide(ScheduledTaskUsagePolicy.layer.pipe(Layer.provide(layerThreadManagementProvided))),
   Layer.provide(
     Layer.mergeAll(
       layerThreadLaunchProvided,
