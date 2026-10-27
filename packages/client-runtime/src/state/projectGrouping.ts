@@ -11,7 +11,7 @@ import type { ClientSettings } from "@t3tools/contracts/settings";
 import type { EnvironmentProject } from "./models.ts";
 import { normalizeProjectPathForComparison } from "./projects.ts";
 
-const SCRATCH_PROJECT_SCOPE_KEY = "\0no-project";
+export const SCRATCH_PROJECT_SCOPE_KEY = "\0no-project";
 
 export interface ProjectGroupingSettings {
   readonly sidebarProjectGroupingMode: SidebarProjectGroupingMode;

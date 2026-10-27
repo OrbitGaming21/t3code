@@ -110,6 +110,9 @@ import {
 import { useAcknowledgeThreadWoke, useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useSidebarProjectGroups } from "../hooks/useSidebarProjectGroups";
+import { useScratchProject } from "../hooks/useScratchProject";
+import { SCRATCH_PROJECT_SCOPE_KEY } from "@t3tools/client-runtime/state/project-grouping";
+import { type SidebarMode, SidebarModeTabs } from "./sidebar/SidebarModeTabs";
 import { useTerminalFocus } from "../hooks/useTerminalFocus";
 import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
 import { registerSettleAndAdvance } from "../settleAndAdvance";
@@ -2687,6 +2690,24 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     openCommandPalette({ open: "new-thread-in" });
   };
 
+  const { scratchEnvironmentId, startScratchThread } = useScratchProject();
+  const chatEnvironmentId = scratchEnvironmentId(primaryEnvironmentId);
+  const sidebarMode: SidebarMode =
+    chosenProjectScopeKey === SCRATCH_PROJECT_SCOPE_KEY ? "chats" : "threads";
+  const startChat = () => {
+    if (chatEnvironmentId === null) return;
+    if (isMobile) setOpenMobile(false);
+    void startScratchThread(chatEnvironmentId);
+  };
+  const selectSidebarMode = (mode: SidebarMode) => {
+    if (mode === "threads") {
+      setProjectScopeKey(null);
+      return;
+    }
+    setProjectScopeKey(SCRATCH_PROJECT_SCOPE_KEY);
+    if (!projectGroups.some((group) => group.isScratch)) startChat();
+  };
+
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
     (projectGroups.length <= 1 ? shortcutLabelForCommand(keybindings, "chat.newLocal") : undefined);
@@ -2699,6 +2720,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         className="min-h-full"
         fixedHeader={
           <SidebarGroup className="z-[1]">
+            {chatEnvironmentId === null ? null : (
+              <div className="mb-2">
+                <SidebarModeTabs mode={sidebarMode} onSelect={selectSidebarMode} />
+              </div>
+            )}
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
               hasProjects={projectGroups.length > 0}
@@ -2827,8 +2853,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 </Combobox>
               }
               onNewProject={openAddProjectCommandPalette}
-              onNewThread={handleNewThreadClick}
-              newThreadDisabled={projects.length === 0}
+              onNewThread={sidebarMode === "chats" ? startChat : handleNewThreadClick}
+              newThreadDisabled={
+                sidebarMode === "chats" ? chatEnvironmentId === null : projects.length === 0
+              }
               newThreadShortcutLabel={newThreadShortcutLabel}
               newThreadInProjectShortcutLabel={newThreadInProjectShortcutLabel}
               showNewThreadInProjectHint={projectGroups.length > 1}
