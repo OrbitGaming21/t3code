@@ -288,6 +288,7 @@ export interface DesktopUpdateState {
   errorContext: "check" | "download" | "install" | null;
   canRetry: boolean;
   notAppliedVersion?: string;
+  opensInstaller?: boolean;
 }
 
 export interface DesktopUpdateReleaseNote {
@@ -320,6 +321,7 @@ export const DesktopUpdateStateSchema = Schema.Struct({
   errorContext: Schema.NullOr(Schema.Literals(["check", "download", "install"])),
   canRetry: Schema.Boolean,
   notAppliedVersion: Schema.optionalKey(Schema.String),
+  opensInstaller: Schema.optionalKey(Schema.Boolean),
 });
 
 export const DesktopCliCommandStateSchema = Schema.Struct({
@@ -1009,6 +1011,18 @@ export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
 export const DesktopMenuBarSummarySchema = Schema.Struct({
+  projects: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({
+        name: Schema.String.check(Schema.isMaxLength(200)),
+        status: Schema.Literals(["working", "attention", "failed", "completed", "idle", "offline"]),
+        label: Schema.String.check(Schema.isMaxLength(200)),
+        environment: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+        detail: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
+        duration: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(100))),
+      }),
+    ).check(Schema.isMaxLength(50)),
+  ),
   display: Schema.optionalKey(UsageDisplaySettingsSchema),
   environmentLabel: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
   theme: Schema.optionalKey(Schema.Literals(["light", "dark"])),
@@ -1028,6 +1042,11 @@ export const DesktopMenuBarSummarySchema = Schema.Struct({
 });
 export type DesktopMenuBarSummary = typeof DesktopMenuBarSummarySchema.Type;
 
+export type DesktopDictationEvent =
+  | { readonly type: "ready" }
+  | { readonly type: "partial" | "final"; readonly text: string }
+  | { readonly type: "error"; readonly message: string };
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled?: () => boolean;
@@ -1037,6 +1056,12 @@ export interface DesktopBridge {
   /** macOS menu bar dropdown; other platforms ignore it. */
   setMenuBarSummary?: (summary: DesktopMenuBarSummary) => Promise<void>;
   onNotificationBadgeClear?: (listener: () => void) => () => void;
+  /** On-device macOS speech recognition; absent on other platforms. */
+  dictation?: {
+    start: (input: { locale?: string }) => Promise<void>;
+    stop: (input: { cancel?: boolean }) => Promise<void>;
+    onEvent: (listener: (event: DesktopDictationEvent) => void) => () => void;
+  };
   onTrackpadScrollEnd?: (listener: () => void) => () => void;
   /**
    * Renderer `window.focus()` cannot raise an Electron window, and on Wayland

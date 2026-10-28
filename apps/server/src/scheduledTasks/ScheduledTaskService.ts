@@ -1136,6 +1136,14 @@ export const layer = Layer.effect(
         existingTask !== null &&
         existingTask.enabled === input.enabled &&
         isSameSchedule(existingTask.schedule, schedule);
+      if (
+        schedule.type === "once" &&
+        input.enabled &&
+        !scheduleUnchanged &&
+        Date.parse(schedule.runAt) <= DateTime.toEpochMillis(now)
+      ) {
+        return yield* taskError("Pick a run time in the future.", { taskId: id });
+      }
       const task: ScheduledTask = {
         id,
         title: input.title,

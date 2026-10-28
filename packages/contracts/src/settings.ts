@@ -1135,6 +1135,12 @@ export const StorageCleanupSettings = Schema.Struct({
 });
 export type StorageCleanupSettings = typeof StorageCleanupSettings.Type;
 
+/** `percent: null` turns the ceiling off for one thread. */
+export const PromptUsageBudgetOverride = Schema.Struct({
+  percent: Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
+});
+export type PromptUsageBudgetOverride = typeof PromptUsageBudgetOverride.Type;
+
 export const ServerSettings = Schema.Struct({
   // Null means unmigrated; empty is authoritative and must not resurrect cleared preferences.
   favorites: Schema.NullOr(ModelFavorites).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
@@ -1292,6 +1298,10 @@ export const ServerSettings = Schema.Struct({
   promptUsageBudgetPercent: Schema.NullOr(
     Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   ).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  // Keyed by thread id; a thread without an entry uses `promptUsageBudgetPercent`.
+  promptUsageBudgetByThread: Schema.Record(TrimmedNonEmptyString, PromptUsageBudgetOverride).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
   cursorKeychainUsageEnabled: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
   ),
@@ -1602,6 +1612,10 @@ export const ServerSettingsPatch = Schema.Struct({
   ),
   promptUsageBudgetPercent: Schema.optionalKey(
     Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
+  ),
+  /** Per entry: an override replaces, `null` restores the environment ceiling. */
+  promptUsageBudgetByThread: Schema.optionalKey(
+    Schema.Record(TrimmedNonEmptyString, Schema.NullOr(PromptUsageBudgetOverride)),
   ),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
 

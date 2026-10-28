@@ -64,7 +64,9 @@ branch name remains.
 
 Open the **Scheduled** tab to create recurring tasks or manage existing ones across your connected environments. Use the filter to narrow the list by environment or project. Each task runs on the environment you choose,
 using its project, model, and workspace settings. Fixed-time schedules use that
-environment's time zone, which may differ from your phone's.
+environment's time zone, which may differ from your phone's. Choose **Once** to run a task
+one time at a date and time, for example after your usage limits reset; it then stays idle
+until you pick a new time.
 
 Deleting a thread also deletes tasks that post into that thread. Tasks that start
 a new thread on each run survive deletion of their previous threads.

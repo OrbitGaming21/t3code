@@ -386,6 +386,7 @@ export function applyServerSettingsPatch(
     usageLimitSources: usageLimitSourcesPatch,
     sourceControlHosts: sourceControlHostsPatch,
     usagePriceOverrides: usagePriceOverridesPatch,
+    promptUsageBudgetByThread: promptUsageBudgetByThreadPatch,
     usageModelAliases: usageModelAliasesPatch,
     // Entry replacement: deepMerge would keep keys the client meant to clear.
     projectSettingsOverrides: projectSettingsOverridesPatch,
@@ -575,6 +576,14 @@ export function applyServerSettingsPatch(
           usageLimitSources: mergeSettingsEntries(
             current.usageLimitSources,
             usageLimitSourcesPatch,
+          ),
+        }
+      : {}),
+    ...(promptUsageBudgetByThreadPatch !== undefined
+      ? {
+          promptUsageBudgetByThread: mergeSettingsEntries(
+            current.promptUsageBudgetByThread,
+            promptUsageBudgetByThreadPatch,
           ),
         }
       : {}),

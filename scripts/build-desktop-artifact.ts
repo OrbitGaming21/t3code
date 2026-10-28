@@ -1105,6 +1105,9 @@ export const LINUX_CAPTURE_EXTRA_RESOURCES = [
     filter: gnomeCaptureBundle.files,
   },
 ] as const;
+export const MAC_DICTATION_EXTRA_RESOURCES = [
+  { from: "apps/desktop/prod-resources/dictation", to: "dictation" },
+] as const;
 export const LINUX_BROWSER_SECRET_EXTRA_RESOURCES = [
   { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
 ] as const;
@@ -2421,6 +2424,50 @@ export const stageResourceMonitor = Effect.fn("stageResourceMonitor")(function* 
   }
 });
 
+export const stageMacDictation = Effect.fn("stageMacDictation")(function* (input: {
+  readonly repoRoot: string;
+  readonly stageResourcesDir: string;
+  readonly arch: typeof BuildArch.Type;
+  readonly verbose: boolean;
+}) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const source = path.join(input.repoRoot, "native/mac-dictation/main.swift");
+  const destinationDirectory = path.join(input.stageResourcesDir, "dictation");
+  const destinationPath = path.join(destinationDirectory, "t3-dictation");
+  yield* fs.remove(destinationDirectory, { recursive: true, force: true }).pipe(Effect.ignore);
+  yield* fs.makeDirectory(destinationDirectory, { recursive: true });
+  const archs =
+    input.arch === "universal"
+      ? ["arm64", "x86_64"]
+      : [input.arch === "arm64" ? "arm64" : "x86_64"];
+  const built: string[] = [];
+  for (const arch of archs) {
+    const output = path.join(destinationDirectory, `t3-dictation-${arch}`);
+    yield* runCommand(
+      ChildProcess.make("xcrun", [
+        "swiftc",
+        "-O",
+        "-swift-version",
+        "5",
+        "-target",
+        `${arch}-apple-macos13`,
+        source,
+        "-o",
+        output,
+      ]),
+      { label: `swiftc mac dictation (${arch})`, verbose: input.verbose },
+    );
+    built.push(output);
+  }
+  yield* runCommand(ChildProcess.make("lipo", ["-create", ...built, "-output", destinationPath]), {
+    label: "lipo mac dictation",
+    verbose: input.verbose,
+  });
+  for (const file of built) yield* fs.remove(file);
+  yield* fs.chmod(destinationPath, 0o755);
+});
+
 export const stageBrowserSecret = Effect.fn("stageBrowserSecret")(function* (input: {
   readonly repoRoot: string;
   readonly stageResourcesDir: string;
@@ -2770,9 +2817,14 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   wslRuntimeBundled = false,
   arch?: typeof BuildArch.Type,
 ) {
+  const localUpdateConfig = yield* Config.String("T3CODE_DESKTOP_LOCAL_UPDATE_CONFIG").pipe(
+    Config.option,
+  );
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
-    productName: resolveDesktopProductName(version),
+    productName: Option.isSome(localUpdateConfig)
+      ? "T3 Code (Usage Build)"
+      : resolveDesktopProductName(version),
     artifactName: "T3-Code-${version}-${arch}.${ext}",
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [
@@ -2792,6 +2844,10 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       : {}),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
+      ...(platform === "mac" && Option.isSome(localUpdateConfig)
+        ? [{ from: localUpdateConfig.value, to: "local-updates.json" }]
+        : []),
+      ...(platform === "mac" ? MAC_DICTATION_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
@@ -2801,7 +2857,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const updateChannel = resolveDesktopUpdateChannel(version);
   // Missing publish config infers a GitHub feed from tokens; staging has no repository, so manifest generation would crash.
   buildConfig.publish = null;
-  if (!isDesktopPreviewVersion(version)) {
+  if (!isDesktopPreviewVersion(version) && Option.isNone(localUpdateConfig)) {
     const publishConfig = yield* resolveGitHubPublishConfig(updateChannel);
     if (publishConfig) {
       buildConfig.publish = [publishConfig];
@@ -2832,7 +2888,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
         NSCameraUsageDescription:
           "T3 Code lets commands run by terminals and coding agents use the camera.",
         NSMicrophoneUsageDescription:
-          "T3 Code lets commands run by terminals and coding agents use the microphone.",
+          "T3 Code uses the microphone for voice prompts and lets commands run by terminals and coding agents use it.",
+        NSSpeechRecognitionUsageDescription:
+          "T3 Code turns your voice prompts into text on this Mac.",
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
         CFBundleDocumentTypes: [
@@ -3725,6 +3783,14 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
     arch: options.arch,
     verbose: options.verbose,
   });
+  if (options.platform === "mac") {
+    yield* stageMacDictation({
+      repoRoot,
+      stageResourcesDir,
+      arch: options.arch,
+      verbose: options.verbose,
+    });
+  }
   if (options.platform === "linux") {
     for (const backend of ["kde", "hyprland"] as const)
       yield* stageLinuxCaptureHelper({

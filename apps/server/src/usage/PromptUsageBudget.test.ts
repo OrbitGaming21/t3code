@@ -40,6 +40,7 @@ const fixture = Effect.fn("PromptUsageBudgetTest.fixture")(function* (
   percent: number | null = 5,
   initial: ServerProviderUsageLimits | undefined = limits,
   authType?: string,
+  promptUsageBudgetByThread: Record<string, { percent: number | null }> = {},
 ) {
   yield* TestClock.setTime(Date.parse(now));
   const snapshot = yield* Ref.make(initial);
@@ -63,7 +64,7 @@ const fixture = Effect.fn("PromptUsageBudgetTest.fixture")(function* (
   );
   const instance = { snapshot: { refresh: provider } } as ProviderInstance;
   const dependencies = Layer.mergeAll(
-    Settings.layerTest({ promptUsageBudgetPercent: percent }),
+    Settings.layerTest({ promptUsageBudgetPercent: percent, promptUsageBudgetByThread }),
     Layer.mock(ProviderInstanceRegistry.ProviderInstanceRegistry)({
       getInstance: () => Effect.succeed(instance),
     }),
@@ -115,6 +116,16 @@ it.effect("does not probe without a budget, and removes completed prompts", () =
   }),
 );
 
+it.effect("uses a chat's own ceiling over the environment ceiling, including turning it off", () =>
+  Effect.gen(function* () {
+    const chatOff = yield* fixture(0, limits, undefined, { [input.threadId]: { percent: null } });
+    yield* chatOff.budget.begin(input);
+    expect(yield* Ref.get(chatOff.refreshes)).toBe(0);
+    const chatZero = yield* fixture(null, limits, undefined, { [input.threadId]: { percent: 0 } });
+    expect((yield* chatZero.budget.begin(input).pipe(Effect.flip)).message).toContain("0%");
+  }),
+);
+
 it.effect("rejects zero budgets and missing usage before starting a provider turn", () =>
   Effect.gen(function* () {
     const zero = yield* fixture(0);
@@ -161,5 +172,19 @@ it.effect("does not apply subscription ceilings to API-billed prompts", () =>
       yield* budget.begin(input);
       expect(yield* budget.poll).toEqual([]);
     }
+  }),
+);
+
+it.effect("enforces the chat percentage instead of a different environment percentage", () =>
+  Effect.gen(function* () {
+    const { budget, snapshot } = yield* fixture(2, limits, undefined, {
+      [input.threadId]: { percent: 8 },
+    });
+    yield* budget.begin(input);
+    yield* Ref.set(snapshot, { ...limits, windows: [{ ...limits.windows[0]!, usedPercent: 24 }] });
+    expect(yield* budget.poll).toEqual([]);
+    yield* TestClock.adjust("30 seconds");
+    yield* Ref.set(snapshot, { ...limits, windows: [{ ...limits.windows[0]!, usedPercent: 28 }] });
+    expect((yield* budget.poll)[0]?.runId).toBe(input.runId);
   }),
 );

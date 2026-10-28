@@ -4,6 +4,7 @@ import type { DesktopUpdateState } from "@t3tools/contracts";
 import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
+  getDesktopUpdateInstallConfirmationMessage,
   getDesktopUpdateReleaseHistoryUrl,
   getDesktopUpdateReleaseUrl,
   resolveDesktopUpdateButtonAction,
@@ -65,6 +66,17 @@ describe("desktop update button state", () => {
 });
 
 describe("desktop update UI helpers", () => {
+  it("installs a local build by restarting the app", () => {
+    const state: DesktopUpdateState = {
+      ...baseState,
+      opensInstaller: true,
+      status: "downloaded",
+      downloadedVersion: "0.0.200",
+    };
+    expect(resolveDesktopUpdateButtonAction(state)).toBe("install");
+    expect(getDesktopUpdateButtonTooltip(state)).toContain("restart and update");
+    expect(getDesktopUpdateInstallConfirmationMessage(state)).toContain("restart T3 Code");
+  });
   it.each(["owner/repo/extra", "owner#notes/repo", "owner/repo?tab=notes"])(
     "falls back to upstream for an invalid configured repository: %s",
     (repository) => {

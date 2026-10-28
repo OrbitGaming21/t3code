@@ -1,4 +1,5 @@
 import { ChatBillingControl } from "./ChatBillingControl";
+import { ChatCeilingControl } from "./ChatCeilingControl";
 import { chatBillingSource } from "./chatBilling";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { insertAttachmentReferencesForDraft } from "./composerAttachmentReferences";
@@ -206,6 +207,7 @@ import {
   ComposerRestingImagePreviews,
 } from "./ComposerAttachmentStrip";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
+import { ComposerVoiceControl } from "./ComposerVoiceControl";
 import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
 import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
@@ -3391,6 +3393,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onRemoveFile={removeComposerFileFromDraft}
       />
     ) : null;
+  const latestVoiceReply =
+    promptHistoryMessages.findLast(
+      (message) => message.role === "assistant" && !message.streaming,
+    ) ?? null;
+  const insertVoiceText = (text: string) =>
+    editPromptFromTraits((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text));
+  const sendVoicePrompt = (text: string) => {
+    const current = promptRef.current.trim();
+    const next = current ? `${current} ${text}` : text;
+    promptRef.current = next;
+    setComposerDraftPrompt(composerDraftTarget, next);
+    submitComposer();
+  };
   const composerAttachButton = showComposerAttachAction ? (
     <ComposerAttachButton
       addComposerAttachments={addComposerAttachments}
@@ -3482,6 +3497,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 disabled={isSendBusy || phase === "running"}
                 onSelect={onProviderModelSelect}
                 getDisabledReason={getModelDisabledReason}
+              />
+              <ChatCeilingControl
+                key={routeThreadRef.threadId}
+                environmentId={environmentId}
+                threadId={routeThreadRef.threadId}
               />
             </div>,
             chatControlsHost,
@@ -3907,6 +3927,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     : composerControlsCollapsed
                       ? null
                       : composerControls}
+                  {!chatStyle && !composerControlsCollapsed ? (
+                    <ChatCeilingControl
+                      key={routeThreadRef.threadId}
+                      environmentId={environmentId}
+                      threadId={routeThreadRef.threadId}
+                    />
+                  ) : null}
                 </div>
 
                 <div
@@ -3918,6 +3945,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   }
                   className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
+                  {isComposerResting ? null : (
+                    <ComposerVoiceControl
+                      isRunning={phase === "running"}
+                      latestReply={
+                        latestVoiceReply
+                          ? { id: latestVoiceReply.id, text: latestVoiceReply.text }
+                          : null
+                      }
+                      locale={window.desktopBridge?.getSystemLocale?.() ?? undefined}
+                      onInsertText={insertVoiceText}
+                      onSendText={sendVoicePrompt}
+                    />
+                  )}
                   {chatStyle && chatControlsHost ? null : composerAttachButton}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}

@@ -32,6 +32,20 @@ function makeState(overrides: Partial<DesktopUpdateState> = {}): DesktopUpdateSt
 }
 
 describe("nextRemoteDesktopUpdateStep", () => {
+  it("requires local installers to be opened on their Mac", () => {
+    assert.deepEqual(
+      nextRemoteDesktopUpdateStep(
+        makeState({ opensInstaller: true, status: "downloaded", downloadedVersion: "0.0.200" }),
+        NO_ATTEMPTS,
+        null,
+      ),
+      {
+        action: "done",
+        outcome: "failed",
+        reason: "Local builds must be installed on this Mac from its desktop app.",
+      },
+    );
+  });
   it("does not install again a version that did not apply on this machine", () => {
     const step = nextRemoteDesktopUpdateStep(
       makeState({ status: "available", availableVersion: "1.2.4", notAppliedVersion: "1.2.4" }),

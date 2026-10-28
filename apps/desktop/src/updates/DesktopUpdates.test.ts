@@ -21,6 +21,25 @@ import * as DesktopUpdates from "./DesktopUpdates.ts";
 import { flushCallbacks, makeHarness } from "./updatesTestHarness.ts";
 
 describe("DesktopUpdates", () => {
+  it.effect("installs a local build through the restart path", () => {
+    const harness = makeHarness({ opensInstaller: true });
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const updates = yield* DesktopUpdates.DesktopUpdates;
+        yield* updates.configure;
+        harness.emit("update-available", { version: "0.0.200" });
+        yield* flushCallbacks;
+        harness.emit("update-downloaded", { version: "0.0.200" });
+        yield* flushCallbacks;
+        const result = yield* updates.install;
+        assert.isTrue(result.accepted);
+        assert.isTrue(result.state.opensInstaller);
+        assert.deepEqual(harness.installSteps, ["quitAndInstall"]);
+        const state = yield* DesktopState.DesktopState;
+        assert.isTrue(yield* Ref.get(state.quitting));
+      }),
+    ).pipe(Effect.provide(harness.layer));
+  });
   it.effect("updates Linux .deb installs and leaves other non-AppImage installs off", () =>
     Effect.gen(function* () {
       const linuxState = (packageType: string | undefined) =>

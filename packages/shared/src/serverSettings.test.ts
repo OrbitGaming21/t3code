@@ -906,3 +906,21 @@ describe("synchronized model preferences", () => {
     ).toEqual([{ provider: otherProvider, model: "sol" }]);
   });
 });
+
+it("merges per-chat ceilings independently and restores the default by removing an override", () => {
+  const initial = {
+    ...DEFAULT_SERVER_SETTINGS,
+    promptUsageBudgetByThread: { first: { percent: 5 }, other: { percent: 15 } },
+  };
+  const changed = applyServerSettingsPatch(initial, {
+    promptUsageBudgetByThread: { first: { percent: null } },
+  });
+  expect(changed.promptUsageBudgetByThread).toEqual({
+    first: { percent: null },
+    other: { percent: 15 },
+  });
+  expect(
+    applyServerSettingsPatch(changed, { promptUsageBudgetByThread: { first: null } })
+      .promptUsageBudgetByThread,
+  ).toEqual({ other: { percent: 15 } });
+});

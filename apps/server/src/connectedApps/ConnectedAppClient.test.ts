@@ -33,7 +33,7 @@ const fixture = Effect.acquireRelease(
               registration_endpoint: `${origin}/register`,
               response_types_supported: ["code"],
               code_challenge_methods_supported: ["S256"],
-              token_endpoint_auth_methods_supported: ["none"],
+              token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
             });
           if (request.url === "/register")
             return json(
@@ -43,8 +43,20 @@ const fixture = Effect.acquireRelease(
               },
               201,
             );
-          if (request.url === "/token")
-            return json({ access_token: "test-access-token", token_type: "Bearer" });
+          if (request.url === "/token") {
+            const parts: Buffer[] = [];
+            request.on("data", (chunk: Buffer) => parts.push(chunk));
+            request.on("end", () => {
+              const fields = new URLSearchParams(Buffer.concat(parts).toString());
+              if (
+                fields.get("client_id") === "preconfigured" &&
+                fields.get("client_secret") !== "test-client-secret"
+              )
+                return json({ error: "invalid_client" }, 401);
+              json({ access_token: "test-access-token", token_type: "Bearer" });
+            });
+            return;
+          }
           if (request.headers.authorization !== "Bearer test-access-token") {
             response.setHeader(
               "www-authenticate",
@@ -137,6 +149,33 @@ it.live("discovers OAuth, saves PKCE and credentials, then lists and calls remot
         arguments: {},
       });
       expect(called.result).toMatchObject({ content: [{ type: "text", text: "Found a note" }] });
+    }),
+  ).pipe(Effect.provide(ConnectedAppClient.layer)),
+);
+
+it.live("uses a registered OAuth client without dynamic registration", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { origin } = yield* fixture;
+      const client = yield* ConnectedAppClient.ConnectedAppClient;
+      const pending = yield* client.run(
+        {
+          id: "registered",
+          name: "Registered app",
+          url: `${origin}/mcp`,
+          status: "needs_sign_in",
+          client: { client_id: "preconfigured", client_secret: "test-client-secret" },
+          redirectUrl: "http://localhost:3000/oauth/apps/callback",
+          state: "registered-state",
+        },
+        { type: "signIn" },
+      );
+      expect(new URL(pending.authorizationUrl!).searchParams.get("client_id")).toBe(
+        "preconfigured",
+      );
+      const complete = yield* client.run(pending.app, { type: "finish", code: "test-code" });
+      expect(complete.error).toBeUndefined();
+      expect(complete.app.status).toBe("connected");
     }),
   ).pipe(Effect.provide(ConnectedAppClient.layer)),
 );

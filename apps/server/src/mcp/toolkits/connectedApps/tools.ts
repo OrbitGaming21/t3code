@@ -1,4 +1,11 @@
-import { ConnectedAppId, ConnectedAppListResult, OrchestratorMcpFailure } from "@t3tools/contracts";
+import {
+  CONNECTED_APP_CATALOG,
+  ConnectedAppConnectResult,
+  ConnectedAppId,
+  ConnectedAppListResult,
+  ConnectedAppSignInInput,
+  OrchestratorMcpFailure,
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
 import * as ConnectedApps from "../../../connectedApps/ConnectedApps.ts";
@@ -18,9 +25,24 @@ export const ConnectedAppsToolkit = Toolkit.make(
   Tool.make("connected_apps_list", {
     ...shared,
     description:
-      "List apps the user has connected in Settings, Integrations. Connect and sign in there before using app tools.",
+      "List apps the user has connected. Use `connected_app_connect` when the user asks to log into an app.",
     success: ConnectedAppListResult,
   }).annotate(Tool.Readonly, true),
+  Tool.make("connected_app_connect", {
+    ...shared,
+    description:
+      "Start signing the user into a catalog app: GitHub, Gmail, Notion, Linear, Jira & Confluence, Sentry, Stripe, Vercel, Cloudflare, Hugging Face. GitHub and Gmail require one-time OAuth app setup in Settings → Integrations. Give the user the returned `authorizationUrl` as a link to open; once they finish, the app's tools are available. Null URL: already signed in.",
+    parameters: Schema.Struct({
+      origin: ConnectedAppSignInInput.fields.origin.annotate({
+        description:
+          "Origin of the T3 server the user's browser can reach, for the OAuth callback. Never substitute localhost for a remote environment.",
+      }),
+      app: Schema.Literals(CONNECTED_APP_CATALOG.map((entry) => entry.id)).annotate({
+        description: "Catalog id.",
+      }),
+    }),
+    success: ConnectedAppConnectResult,
+  }).annotate(Tool.Destructive, false),
   Tool.make("connected_app_tools", {
     ...shared,
     description:

@@ -15,7 +15,7 @@ import { toastManager } from "../ui/toast";
 export const USAGE_BAR_HEIGHT = { compact: 112, comfortable: 144, large: 176 };
 const SECTIONS: Record<UsageDisplaySection, string> = {
   limits: "Usage & resets",
-  tokens: "Tokens today",
+  tokens: "Token costs",
   tasks: "Scheduled tasks",
   ceiling: "Ceiling per prompt",
 };

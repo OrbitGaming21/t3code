@@ -473,6 +473,36 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }),
   );
 
+  it.effect("packages local Mac updates with their private installer configuration", () =>
+    Effect.gen(function* () {
+      const config = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "0.0.200",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+      assert.equal(config.productName, "T3 Code (Usage Build)");
+      assert.isNull(config.publish);
+      assert.includeDeepMembers(config.extraResources as unknown[], [
+        { from: "/checkout/.t3/local-updates/local-updates.json", to: "local-updates.json" },
+      ]);
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({
+            env: {
+              T3CODE_DESKTOP_LOCAL_UPDATE_CONFIG: "/checkout/.t3/local-updates/local-updates.json",
+              GITHUB_REPOSITORY: "pingdotgg/t3code",
+            },
+          }),
+        ),
+      ),
+    ),
+  );
+
   it.effect("omits update feeds for pull request preview builds", () =>
     Effect.gen(function* () {
       const preview = yield* createBuildConfig(

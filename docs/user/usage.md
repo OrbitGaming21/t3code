@@ -165,17 +165,21 @@ Press `Escape` to return to the previous page. Customize these shortcuts in
 ## Usage overview and subscription ceiling per prompt
 
 On web and desktop, open **T3 Code** at the top of the sidebar or use the bottom panel
-for today's token total, reported provider limits, and scheduled tasks. The overview follows
+for estimated token costs today and over the last 7 days, reported provider limits, and scheduled tasks. The overview follows
 the current thread's environment, or your primary environment outside a thread. Use the
-refresh button to update token totals from available history. On the macOS desktop app, the
+refresh button to update totals from available history. Token costs show the value of recorded usage at API prices, not an invoice or additional subscription charges. Missing prices are marked unpriced or as a lower bound. On the macOS desktop app, the
 same summary also appears under **T3 Code** in the menu bar while the app is running.
+The Mac menu also shows project activity across your environments, including work that needs
+input or approval. Elapsed time starts with the oldest currently active agent in each project;
+when work finishes, the menu shows the latest run's duration. Unavailable environments are marked
+instead of showing cached work as running.
 The bottom panel is hidden on narrow screens; open **T3 Code** or the **Scheduled tasks**
 screen from the sidebar instead.
 
-Set **Ceiling per prompt** in the overview or on the **Scheduled tasks** screen
+Set **Default ceiling per prompt** in the overview or on the **Scheduled tasks** screen
 to limit how much of a subscription quota window each prompt can spend. It applies to new
 prompts in the selected environment, including scheduled prompts. Clear the field and save
-to disable it; 0 prevents prompts from starting.
+to disable it; 0 prevents subscription prompts from starting. API-billed Codex prompts are exempt.
 
 T3 records the provider's usage when the prompt starts and checks for increases every
 30 seconds. It interrupts that prompt and holds its queue when the reported increase
@@ -183,6 +187,17 @@ reaches the budget. Subscription usage is account-wide: concurrent work in other
 or apps also contributes. Delayed reports and work between checks can cause overshoot;
 this is not an exact token cutoff. Providers without fresh quota reports cannot start
 prompts while a budget is enabled. Changing the percentage affects the next prompt.
+
+To give one chat its own ceiling, use its gauge button, including before sending its first prompt. **Turn off
+for this chat** removes the ceiling only there, and **Use default** returns to the
+environment ceiling.
+
+On **Usage**, **Money saver** compares what Codex and Claude tokens would cost at API
+prices with your subscriptions over the selected period. Enter each monthly subscription
+price; T3 spreads it over the displayed period using a 30-day month. Prices default to
+$20 each and stay on this device. The comparison is potential subscription savings, not
+a record of payments. Providers with no usage or missing model prices are excluded from
+the total; API-paid usage is not additional subscription savings.
 
 Use **Usage display settings** beside the bottom bar or in the macOS menu to change
 their sizes, move sections earlier or later, show or hide sections, and align the bar.

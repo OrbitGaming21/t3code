@@ -269,3 +269,11 @@ passed as `--wsl-runtime`; see the
 Add `--signed` after configuring the platform credentials in the
 [release runbook](./release.md). macOS passkeys need a signed, provisioned app; follow the
 [Connect setup](./connect-setup.md#desktop-passkeys) for local signing and renderer HMR.
+
+## Local Mac update builds
+
+For a private Mac build that offers checkout changes through Update, run `vp run dev:updates -- --install` once. This installs a login watcher for this checkout. After 30 seconds without source edits, it builds a macOS installer and publishes it in `.t3/local-updates`. Build output goes to `.t3/local-updates/watcher.log`. Failed builds leave the previous update available; edits during a build cause another build before publication.
+
+Install the first generated DMG manually, replacing **T3 Code (Usage Build)** in Applications. Subsequent builds appear through the app's existing Update button, which checks every four minutes (or immediately through Check for Updates). Prepare the update, then choose **Open installer**. Quit the app before replacing it, then reopen it. Local installers use a separate path from signed public releases and require installation on the Mac itself.
+
+`vp run dev:updates -- --uninstall` removes the watcher while keeping existing installers. For a foreground watcher, use `vp run dev:updates`; add `-- --once` for one build. This workflow packages the checkout as it stands, including uncommitted changes.

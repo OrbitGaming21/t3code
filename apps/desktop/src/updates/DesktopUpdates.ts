@@ -408,7 +408,12 @@ export const make = Effect.gen(function* () {
       : false;
 
   const hasUpdateFeedConfig = Ref.get(appUpdateYmlConfigRef).pipe(
-    Effect.map((appUpdateYmlConfig) => Option.isSome(appUpdateYmlConfig) || config.mockUpdates),
+    Effect.map(
+      (appUpdateYmlConfig) =>
+        Option.isSome(appUpdateYmlConfig) ||
+        config.mockUpdates ||
+        electronUpdater.opensInstaller === true,
+    ),
   );
 
   const resolveDisabledReason = Effect.gen(function* () {
@@ -630,6 +635,7 @@ export const make = Effect.gen(function* () {
     Ref.get(notAppliedVersionRef).pipe(
       Effect.map((notAppliedVersion) => ({
         ...createBaseUpdateState(channel, disabledReason, environment),
+        ...(electronUpdater.opensInstaller ? { opensInstaller: true } : {}),
         ...Option.match(notAppliedVersion, {
           onNone: () => ({}),
           onSome: (version) => ({ notAppliedVersion: version }),

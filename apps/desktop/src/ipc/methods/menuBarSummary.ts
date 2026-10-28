@@ -42,13 +42,18 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
     const anchor = tray.getBounds();
     const { workArea } = Electron.screen.getDisplayMatching(anchor);
     const display = summary.display ?? DEFAULT_USAGE_DISPLAY_SETTINGS;
-    const widths = { compact: 360, comfortable: 400, large: 480 };
+    const widths = { compact: 280, comfortable: 320, large: 360 };
     const width = Math.min(widths[display.menuSize], workArea.width - 16);
     const quotaCount = display.hidden.includes("limits")
       ? 0
       : summary.items.filter((item) => item.usedPercent !== undefined).length;
-    const scale = display.menuSize === "large" ? 1.15 : display.menuSize === "compact" ? 0.9 : 1;
-    const height = Math.min(Math.round((344 + quotaCount * 160) * scale), workArea.height - 16);
+    const scale = display.menuSize === "large" ? 0.9 : display.menuSize === "compact" ? 0.6 : 0.75;
+    const projectHeight =
+      summary.projects === undefined ? 0 : 32 + Math.min(summary.projects.length, 3) * 92;
+    const height = Math.min(
+      Math.round((344 + quotaCount * 160 + projectHeight) * scale),
+      workArea.height - 16,
+    );
     return {
       width,
       height,
@@ -140,7 +145,7 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
           if (tray === null || tray.isDestroyed()) {
             tray = new Electron.Tray(Electron.nativeImage.createEmpty());
             tray.setTitle("T3 Code");
-            tray.setToolTip("T3 Code usage and reset times");
+            tray.setToolTip("T3 Code project progress, usage and reset times");
             tray.on("click", togglePanel);
             tray.on("right-click", togglePanel);
           }

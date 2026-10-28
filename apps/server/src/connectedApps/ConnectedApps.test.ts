@@ -181,3 +181,37 @@ it.effect("keeps rotated credentials when a remote operation fails", () =>
     });
   }),
 );
+
+it.effect("connects a catalog app once and reuses it on the next request", () =>
+  Effect.gen(function* () {
+    const { apps } = yield* fixture();
+    const entry = { name: "Notion", url: "https://mcp.notion.com/mcp" };
+    const first = yield* apps.connectCatalogApp(entry, "http://localhost:3773");
+    expect(first.authorizationUrl).toContain("https://example.com/authorize?state=");
+    const second = yield* apps.connectCatalogApp(entry, "http://localhost:3773");
+    expect(second.app.id).toBe(first.app.id);
+    expect((yield* apps.list).apps).toHaveLength(1);
+  }),
+);
+
+it.effect(
+  "requires registered clients for GitHub and stores credentials without exposing them",
+  () =>
+    Effect.gen(function* () {
+      const { apps, requests } = yield* fixture();
+      const input = { name: "GitHub", url: "https://api.githubcopilot.com/mcp/" };
+      expect((yield* apps.add(input).pipe(Effect.flip)).message).toContain("OAuth");
+      const app = yield* apps.add({
+        ...input,
+        oauthClient: { clientId: "configured-client", clientSecret: "private-client-secret" },
+      });
+      expect(app.oauthConfigured).toBe(true);
+      expect(JSON.stringify(app)).not.toContain("private-client-secret");
+      expect(JSON.stringify(yield* apps.list)).not.toContain("private-client-secret");
+      yield* apps.signIn({ id: app.id, origin: "https://remote-t3.example" });
+      expect((yield* Ref.get(requests))[0]?.app.client).toMatchObject({
+        client_id: "configured-client",
+        client_secret: "private-client-secret",
+      });
+    }),
+);

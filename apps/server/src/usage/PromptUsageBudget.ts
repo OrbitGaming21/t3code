@@ -62,7 +62,10 @@ const make = Effect.gen(function* () {
   return PromptUsageBudget.of({
     begin: Effect.fn("PromptUsageBudget.begin")(
       function* (input) {
-        const percent = (yield* settings.getSettings).promptUsageBudgetPercent;
+        const current = yield* settings.getSettings;
+        const override = current.promptUsageBudgetByThread[input.threadId];
+        const percent =
+          override === undefined ? current.promptUsageBudgetPercent : override.percent;
         if (percent === null) return;
         const instance = yield* providers.getInstance(input.instanceId);
         const provider = instance === undefined ? undefined : yield* instance.snapshot.refresh;

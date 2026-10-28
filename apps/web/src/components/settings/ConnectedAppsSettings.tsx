@@ -1,6 +1,13 @@
+import { useEnvironmentHttpBaseUrl } from "../../state/environments";
 import { toastManager } from "../ui/toast";
 import { useAtomValue } from "@effect/atom-react";
-import { AuthOrchestrationReadScope, type EnvironmentId } from "@t3tools/contracts";
+import {
+  AuthOrchestrationReadScope,
+  CONNECTED_APP_CATALOG,
+  connectedAppCallbackUrl,
+  type ConnectedAppCatalogEntry,
+  type EnvironmentId,
+} from "@t3tools/contracts";
 import { useState } from "react";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { useEnvironmentScope } from "../../state/session";
@@ -20,8 +27,8 @@ export function ConnectedAppsSettings() {
   return (
     <SettingsSection id="connected-apps" title="Connected apps">
       <p className="mb-3 text-sm text-muted-foreground">
-        Connect apps to let your agents use their tools in Chat and coding threads. Add the app’s
-        remote MCP server URL, then sign in. Connections belong to the selected environment.
+        Connect apps so your agents can use them in Chat and coding threads. Pick an app and sign
+        in, or ask an agent to “log me into Notion”. Connections belong to the selected environment.
       </p>
       {environments.map((environment) => (
         <EnvironmentApps
@@ -47,6 +54,11 @@ function EnvironmentApps({
   label: string;
   connected: boolean;
 }) {
+  const serverBaseUrl = useEnvironmentHttpBaseUrl(environmentId);
+  const callbackUrl = serverBaseUrl ? connectedAppCallbackUrl(serverBaseUrl) : null;
+  const [oauthApp, setOAuthApp] = useState<ConnectedAppCatalogEntry | null>(null);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const canRead = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
   const query = useEnvironmentQuery(
     connected && canRead ? serverEnvironment.connectedApps({ environmentId, input: {} }) : null,
@@ -65,9 +77,9 @@ function EnvironmentApps({
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const connect = async (id: string) => {
-    if (!connected || !canSignIn || busy) return;
+    if (!connected || !canSignIn || busy || !serverBaseUrl) return;
     setBusy(true);
-    const result = await signIn({ environmentId, input: { id, origin: window.location.origin } });
+    const result = await signIn({ environmentId, input: { id, origin: serverBaseUrl } });
     if (result._tag === "Success" && result.value.authorizationUrl) {
       await ensureLocalApi()
         .shell.openExternal(result.value.authorizationUrl)
@@ -81,6 +93,54 @@ function EnvironmentApps({
     }
     query.refresh();
     setBusy(false);
+  };
+  const connectCatalog = async (entry: ConnectedAppCatalogEntry) => {
+    if (!connected || !canAdd || busy) return;
+    const existing = query.data?.apps.find(
+      (app) => new URL(app.url).href === new URL(entry.url).href,
+    );
+    if (entry.oauthSetupUrl && !existing?.oauthConfigured) {
+      setClientId("");
+      setClientSecret("");
+      setOAuthApp(entry);
+      return;
+    }
+    if (existing) return connect(existing.id);
+    setBusy(true);
+    const result = await add({ environmentId, input: { name: entry.name, url: entry.url } });
+    setBusy(false);
+    if (result._tag === "Success") await connect(result.value.id);
+    else query.refresh();
+  };
+  const configureOAuth = async () => {
+    if (
+      !oauthApp ||
+      !clientId.trim() ||
+      !clientSecret.trim() ||
+      !connected ||
+      !canAdd ||
+      !canSignIn ||
+      busy ||
+      !callbackUrl
+    )
+      return;
+    setBusy(true);
+    const result = await add({
+      environmentId,
+      input: {
+        name: oauthApp.name,
+        url: oauthApp.url,
+        oauthClient: { clientId: clientId.trim(), clientSecret: clientSecret.trim() },
+      },
+    });
+    setBusy(false);
+    if (result._tag === "Success") {
+      setOAuthApp(null);
+      setClientId("");
+      setClientSecret("");
+      await connect(result.value.id);
+    }
+    query.refresh();
   };
   const create = async () => {
     if (!name.trim() || !url.trim() || busy || !canAdd) return;
@@ -154,6 +214,120 @@ function EnvironmentApps({
           </div>
         ))
       )}
+      {connected && canRead ? (
+        <div className="grid gap-2 px-4 py-3 sm:grid-cols-2">
+          {CONNECTED_APP_CATALOG.map((entry) => {
+            const existing = query.data?.apps.find(
+              (app) => new URL(app.url).href === new URL(entry.url).href,
+            );
+            return (
+              <div
+                key={entry.id}
+                className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{entry.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{entry.description}</p>
+                </div>
+                {existing?.status === "connected" ? (
+                  <Badge variant="secondary">Connected</Badge>
+                ) : (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={!canAdd || !canSignIn || busy}
+                    onClick={() => void connectCatalog(entry)}
+                  >
+                    {"oauthSetupUrl" in entry && !existing?.oauthConfigured
+                      ? "Set up"
+                      : existing
+                        ? "Sign in"
+                        : "Connect"}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {oauthApp ? (
+        <form
+          className="space-y-3 rounded-lg border border-border p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void configureOAuth();
+          }}
+        >
+          <h4 className="text-sm font-medium">Set up {oauthApp.name} sign-in</h4>
+          <p className="text-xs text-muted-foreground">
+            {oauthApp.name} requires an OAuth app registration once for this environment.
+            Afterwards, choose Sign in. You do not need to enter an MCP URL.
+          </p>
+          <p className="text-xs text-muted-foreground">Register this redirect URI:</p>
+          <Input
+            aria-label={`${oauthApp.name} OAuth redirect URI`}
+            value={callbackUrl ?? "Connect the environment first"}
+            readOnly
+          />
+          <Label>
+            OAuth client ID
+            <Input
+              aria-label={`${oauthApp.name} OAuth client ID`}
+              value={clientId}
+              onChange={(event) => setClientId(event.target.value)}
+              autoComplete="off"
+            />
+          </Label>
+          <Label>
+            OAuth client secret
+            <Input
+              type="password"
+              aria-label={`${oauthApp.name} OAuth client secret`}
+              value={clientSecret}
+              onChange={(event) => setClientSecret(event.target.value)}
+              autoComplete="new-password"
+            />
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={
+                busy ||
+                !canAdd ||
+                !canSignIn ||
+                !clientId.trim() ||
+                !clientSecret.trim() ||
+                !callbackUrl
+              }
+            >
+              Save and sign in
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setOAuthApp(null);
+                setClientId("");
+                setClientSecret("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (oauthApp.oauthSetupUrl)
+                  void ensureLocalApi().shell.openExternal(oauthApp.oauthSetupUrl);
+              }}
+            >
+              Setup instructions ↗
+            </Button>
+          </div>
+        </form>
+      ) : null}
       <form
         className="space-y-3 px-4 py-3"
         onSubmit={(event) => {
@@ -161,6 +335,7 @@ function EnvironmentApps({
           void create();
         }}
       >
+        <p className="text-xs font-medium text-muted-foreground">Another app</p>
         <Label>
           App name
           <Input

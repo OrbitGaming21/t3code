@@ -39,7 +39,7 @@ export function PromptUsageBudgetSettings({
   };
   return (
     <div className={inline ? "flex items-center gap-2" : "space-y-1"}>
-      <Label>Ceiling per prompt</Label>
+      <Label>Default ceiling per prompt</Label>
       <div className="flex items-center gap-2">
         <div className="w-20">
           <Input

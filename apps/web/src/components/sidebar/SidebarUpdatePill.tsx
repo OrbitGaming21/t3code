@@ -53,7 +53,11 @@ function shouldUseSidebarUpdateReleaseNotesPopover(
   showUpdateDetails: boolean,
   state: DesktopUpdateState | null,
 ): boolean {
-  return showUpdateDetails && state?.channel === "nightly" && state.releaseNotes.length > 0;
+  return (
+    showUpdateDetails &&
+    (state?.channel === "nightly" || state?.opensInstaller === true) &&
+    state.releaseNotes.length > 0
+  );
 }
 
 function handleSidebarUpdateReleaseNotesPopoverOpenChange(
@@ -220,9 +224,11 @@ function SidebarUpdateControl() {
   const action = state ? resolveDesktopUpdateButtonAction(state) : "none";
   const isDownloading = state?.status === "downloading";
   const localUpdateVersion =
-    state && action !== "none" ? getDesktopUpdateDownloadedVersion(state) : null;
+    state && !state.opensInstaller && action !== "none"
+      ? getDesktopUpdateDownloadedVersion(state)
+      : null;
   const everything = useUpdateEverything(localUpdateVersion);
-  const runsEverything = everything.hasUpdates && !isDownloading;
+  const runsEverything = everything.hasUpdates && !isDownloading && !state?.opensInstaller;
   const run = useUpdateEverythingRun();
   const isRunningEverything = run !== null;
   const showCheckIcon = shouldShowDesktopUpdateCheckIcon({

@@ -1,3 +1,4 @@
+import { MoneySaver, subscriptionPeriodDays } from "./MoneySaver";
 import { ChatGptUsageButton } from "../settings/ChatGptUsageButton";
 import { usesChatGptSharing } from "@t3tools/shared/usageLimits";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
@@ -547,25 +548,28 @@ export function UsagePage() {
                 ))}
               </div>
             ) : (
-              <UsageOverview
-                merged={merged}
-                shownWindow={shownWindow}
-                hour12={hour12}
-                days={days}
-                hours={hours}
-                showingKept={showingKept}
-                metric={metric === "tokens" ? "tokens" : "cost"}
-                selectedEnvironments={selectedEnvironments}
-                hiddenProviders={hiddenProviders}
-                refreshingUsage={refreshingUsage}
-                cursorAccessEnvironments={cursorAccessEnvironments}
-                showChatGptSharing={showChatGptSharing}
-                onCursorEnabled={() => {
-                  void refresh();
-                  void refreshLimits(false, true);
-                }}
-                onSelectModel={selectUsageModel}
-              />
+              <>
+                <MoneySaver merged={merged} days={subscriptionPeriodDays(shownWindow)} />
+                <UsageOverview
+                  merged={merged}
+                  shownWindow={shownWindow}
+                  hour12={hour12}
+                  days={days}
+                  hours={hours}
+                  showingKept={showingKept}
+                  metric={metric === "tokens" ? "tokens" : "cost"}
+                  selectedEnvironments={selectedEnvironments}
+                  hiddenProviders={hiddenProviders}
+                  refreshingUsage={refreshingUsage}
+                  cursorAccessEnvironments={cursorAccessEnvironments}
+                  showChatGptSharing={showChatGptSharing}
+                  onCursorEnabled={() => {
+                    void refresh();
+                    void refreshLimits(false, true);
+                  }}
+                  onSelectModel={selectUsageModel}
+                />
+              </>
             )}
           </WorkspacePageContainer>
         </ScrollArea>

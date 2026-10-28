@@ -190,6 +190,18 @@ Stashes containing uploaded files must be restored in their original environment
 Those files are retained for 24 hours. After an upload expires, restore the prompt
 and use **Attach again** or remove the missing file before sending.
 
+## Voice prompts on web and desktop
+
+Choose the microphone next to the attach button to dictate into the prompt, then choose it
+again to stop. Choose the waveform button to start a voice conversation: speak, and T3 Code
+sends your prompt when you pause, reads the agent's reply aloud when its turn ends, then
+listens again. Choose the waveform button again to end the conversation.
+
+On macOS desktop, speech is recognized on your Mac. Allow T3 Code under **System Settings →
+Privacy & Security → Microphone** and **Speech Recognition** the first time. In a browser,
+voice prompts use the browser's speech recognition where it is available, such as Chrome and
+Safari. Voice prompts are not available on Windows and Linux desktop.
+
 ## Voice input on iPhone
 
 On supported iPhones with iOS 26 or later, use the composer's microphone to record,
@@ -373,15 +385,21 @@ Android opens a compatible installed file viewer.
 
 ## Use connected apps
 
-On web and desktop, open **Settings → Integrations → Connected apps**. Add a name and
-an app’s remote MCP server URL, then choose **Sign in**. Complete the app’s login in your
-browser, return to T3 Code, and choose **Refresh**. Your agents can then discover and use
-the app’s tools in Chat or coding threads when you ask them to.
+On web and desktop, open **Settings → Integrations → Connected apps**. Pick an app from
+the catalog and choose **Connect** or **Sign in**; its server address is already filled in.
+GitHub, Gmail, Notion, Linear, Jira & Confluence, Sentry, Stripe, Vercel, Cloudflare, and Hugging Face
+are listed. Complete the app’s login in your browser, return to T3 Code, and choose **Refresh**.
+Your agents can then use the app’s tools when you ask. You can also ask an agent to connect
+a catalog app; its sign-in link must return to your reachable T3 environment address.
 
-Connections are saved on the selected environment and work for clients connected to that
-environment. This first version supports remote MCP over HTTP with automatic OAuth client
-registration, plus servers that need no login. Apps requiring a preconfigured OAuth client
-or an API key are not supported yet.
+GitHub and Gmail require **Set up** once per environment: register an OAuth application
+following the linked instructions, copy the displayed redirect URI into that registration,
+and enter its client ID and secret. Then choose **Save and sign in**. Gmail also requires
+Google Workspace Developer Preview access and the Gmail MCP APIs enabled. These services
+do not offer automatic client registration.
+
+For another app, enter its name and remote MCP server URL. Connections and OAuth credentials
+stay on the selected environment, so its other connected clients can use the same apps.
 
 Choose **Remove** to delete a connection and its saved credentials from the environment.
 To revoke the app’s authorization too, use the app’s own account settings.

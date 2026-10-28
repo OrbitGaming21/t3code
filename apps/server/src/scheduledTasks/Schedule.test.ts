@@ -26,6 +26,17 @@ describe("scheduled task schedule calculation", () => {
     expect(parts?.minute).toBe(0);
   });
 
+  it("runs a one-time schedule at its time and never again", () => {
+    const schedule = { type: "once", runAt: "2026-07-03T18:30:00.000Z" } as const;
+    const before = DateTime.makeUnsafe("2026-07-03T18:00:00.000Z");
+    const next = nextScheduledRunAt(schedule, before);
+    expect(next ? DateTime.formatIso(next) : null).toBe("2026-07-03T18:30:00.000Z");
+    expect(nextScheduledRunAt(schedule, DateTime.makeUnsafe(schedule.runAt))).toBeNull();
+    expect(isSameSchedule(schedule, { type: "once", runAt: "2026-07-03T11:30:00.000-07:00" })).toBe(
+      true,
+    );
+  });
+
   it("compares schedules structurally", () => {
     expect(
       isSameSchedule({ type: "interval", everyMs: 60_000 }, { type: "interval", everyMs: 60_000 }),

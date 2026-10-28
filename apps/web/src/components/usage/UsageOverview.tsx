@@ -14,7 +14,7 @@ import {
   type TimestampFormat,
   type DesktopMenuBarSummary,
 } from "@t3tools/contracts";
-import { formatTokens, makeWindow } from "@t3tools/shared/usageFormat";
+import { formatUsd, makeWindow } from "@t3tools/shared/usageFormat";
 import { collectLimitAccounts, formatResetsIn, limitsNotice } from "@t3tools/shared/usageLimits";
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect } from "react";
@@ -31,7 +31,27 @@ import { useEnvironmentScope } from "../../state/session";
 import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
+import { Atom } from "effect/reactivity";
+import { isElectron } from "../../env";
+import { environmentProjects } from "../../state/projects";
+import { environmentThreadShells } from "../../state/threads";
+import { liveShellEnvironmentIdsAtom } from "../../state/shell";
+import { environmentCatalog } from "../../connection/catalog";
+import { summarizeMenuBarProjects, menuBarProjectDuration } from "./menuBarProjects";
 import { PROVIDER_PRESENTATION } from "./usageProviders";
+
+const menuBarProjectsAtom = Atom.make((get) => {
+  const catalog = get(environmentCatalog.catalogValueAtom);
+  return summarizeMenuBarProjects(
+    get(environmentProjects.projectsAtom),
+    get(environmentThreadShells.quietThreadShellsAtom),
+    get(liveShellEnvironmentIdsAtom),
+  ).map((project) => ({
+    ...project,
+    environment: catalog.entries.get(project.environmentId)?.target.label.slice(0, 200),
+  }));
+});
+const noMenuBarProjectsAtom = Atom.make<ReturnType<typeof summarizeMenuBarProjects>>([]);
 
 export function useOverviewEnvironmentId() {
   const target = useThreadRouteTarget();
@@ -104,11 +124,11 @@ function EnvironmentOverview({
   const environment = useEnvironment(environmentId);
   const config = useAtomValue(serverEnvironment.configValueAtom(environmentId));
   const now = useNowMinute();
-  const nowMs = Date.parse(now);
+  const nowMs = Date.parse(`${now}:00.000Z`);
   const theme = useRenderedAppearance();
   const display = useClientSettings((settings) => settings.usageDisplay);
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
-  const usageWindow = makeWindow(1, new Date(now));
+  const usageWindow = makeWindow(7, new Date(nowMs));
   const connected = environment?.connection.phase === "connected";
   const canReadUsage = useEnvironmentScope(environmentId, AuthDiagnosticsReadScope);
   const canReadTasks = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
@@ -130,19 +150,47 @@ function EnvironmentOverview({
       ],
     ]),
   );
-  const totalTokens = usage.data
+  const merged = usage.data
     ? mergeUsage(
         [{ environmentId, label: environment?.label ?? "Environment", summary: usage.data }],
         USAGE_CONTRACT_VERSION,
-      ).totalTokens
+      )
     : undefined;
-  const activeTasks = tasks.data?.tasks.filter((task) => task.enabled);
+  const spentWeek = merged?.costUsd;
+  const spentToday =
+    merged === undefined
+      ? undefined
+      : (merged.daily.find((day) => day.day === usageWindow.untilDay)?.costUsd ?? 0);
+  const activeTasks = tasks.data?.tasks.filter(
+    (task) =>
+      task.enabled &&
+      (task.schedule.type !== "once" ||
+        task.nextRunAt !== null ||
+        task.lastRunStatus === "running"),
+  );
+  const pausedTasks = tasks.data?.tasks.filter((task) => !task.enabled).length ?? 0;
+  const finishedTasks =
+    tasks.data?.tasks.filter(
+      (task) =>
+        task.enabled &&
+        task.schedule.type === "once" &&
+        task.nextRunAt === null &&
+        task.lastRunStatus !== "running",
+    ).length ?? 0;
   const next = activeTasks
     ?.filter((task) => task.nextRunAt !== null)
     .toSorted((a, b) => a.nextRunAt!.localeCompare(b.nextRunAt!))[0];
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const ceiling = settings?.promptUsageBudgetPercent ?? null;
-  const tokensLabel = totalTokens === undefined ? "Unavailable" : formatTokens(totalTokens);
+  const unpriced = merged?.costQuality.unpricedShare ?? 0;
+  const costLabel = (cost: number | undefined) =>
+    cost === undefined
+      ? "Unavailable"
+      : unpriced === 1
+        ? "Unpriced"
+        : `${unpriced > 0 ? "≥" : "≈"}${formatUsd(cost)}`;
+  const tokensLabel = costLabel(spentToday);
+  const weekLabel = costLabel(spentWeek);
   const tokensStatus = !connected
     ? "Disconnected"
     : !canReadUsage
@@ -151,17 +199,33 @@ function EnvironmentOverview({
         ? "Usage unavailable"
         : usage.isPending
           ? "Updating…"
-          : (environment?.label ?? "Current environment");
+          : `${environment?.label ?? "Current environment"} · API-price estimate, not a bill`;
   const tasksLabel =
     activeTasks === undefined
       ? tasks.error
         ? "Tasks unavailable"
         : "Unavailable"
-      : `${activeTasks.length} active · ${tasks.data!.tasks.length - activeTasks.length} paused`;
+      : `${activeTasks.length} active · ${pausedTasks} paused${finishedTasks > 0 ? ` · ${finishedTasks} finished` : ""}`;
   const nextLabel = next
     ? `Next: ${new Date(next.nextRunAt!).toLocaleString()}`
     : "No upcoming timed runs";
+  const projects = useAtomValue(
+    isElectron && compact ? menuBarProjectsAtom : noMenuBarProjectsAtom,
+  );
   const menuBarSummary = JSON.stringify({
+    projects: projects.map((project) => {
+      const duration = menuBarProjectDuration(project, nowMs);
+      return {
+        name: project.name,
+        status: project.status,
+        label: project.label,
+        ...("environment" in project && typeof project.environment === "string"
+          ? { environment: project.environment }
+          : {}),
+        ...(project.detail ? { detail: project.detail } : {}),
+        ...(duration ? { duration } : {}),
+      };
+    }),
     display,
     environmentLabel: environment?.label ?? "Current environment",
     theme,
@@ -177,9 +241,9 @@ function EnvironmentOverview({
         })),
       ),
       {
-        label: "Tokens today",
+        label: "Token cost today",
         value: tokensLabel,
-        detail: tokensStatus,
+        detail: `${weekLabel} last 7 days · API-price estimate`,
         action: "open-usage",
         section: "tokens",
       },
@@ -191,7 +255,7 @@ function EnvironmentOverview({
         action: "open-scheduled-tasks",
       },
       {
-        label: "Ceiling per prompt",
+        label: "Default ceiling per prompt",
         section: "ceiling",
         value: ceiling === null ? "Off" : `${ceiling}%`,
         detail: "Subscription allowance",
@@ -279,12 +343,13 @@ function EnvironmentOverview({
           className="w-36 shrink-0 space-y-1 border-s border-border ps-6"
         >
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xs font-medium text-muted-foreground">Tokens today</h2>
+            <h2 className="text-xs font-medium text-muted-foreground">Token cost today</h2>
             {refreshButton}
           </div>
           <p className="text-2xl font-semibold tracking-tight tabular-nums in-data-[usage-size=compact]:text-xl in-data-[usage-size=large]:text-3xl">
             {tokensLabel}
           </p>
+          <p className="text-xs text-muted-foreground tabular-nums">{weekLabel} last 7 days</p>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -296,7 +361,7 @@ function EnvironmentOverview({
             >
               Usage details ↗
             </TooltipTrigger>
-            <TooltipPopup>{tokensStatus}</TooltipPopup>
+            <TooltipPopup>What your tokens would cost at API prices. {tokensStatus}</TooltipPopup>
           </Tooltip>
         </section>
         <section
@@ -331,11 +396,14 @@ function EnvironmentOverview({
         className="space-y-3 border-b border-border pb-4"
       >
         <div className="flex items-center gap-2">
-          <h2 className="font-medium">Tokens today</h2>
+          <h2 className="font-medium">Token cost today</h2>
           {refreshButton}
         </div>
         <p className="text-3xl font-semibold tracking-tight tabular-nums">{tokensLabel}</p>
-        <p className="text-muted-foreground">{tokensStatus}</p>
+        <p className="text-muted-foreground tabular-nums">{weekLabel} last 7 days</p>
+        <p className="text-xs text-muted-foreground">
+          What your tokens would cost at API prices. {tokensStatus}
+        </p>
       </section>
       <section
         style={usageSectionStyle(display, "limits")}

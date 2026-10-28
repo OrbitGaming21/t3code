@@ -99,6 +99,38 @@ const run = (
 
 const event = { sender: { id: 1 } };
 
+it.effect("shows project progress before usage and keeps the expanded panel on screen", () =>
+  Effect.gen(function* () {
+    const { tray, windows } = setup();
+    yield* run("darwin", async (handler) => {
+      await handler(event, {
+        projects: [
+          {
+            name: "<Project>",
+            status: "working",
+            label: "2 agents working",
+            duration: "For 12m",
+            detail: "Building & testing",
+          },
+        ],
+        items: [{ label: "Codex quota", usedPercent: 20, action: "open-usage" }],
+      });
+      tray.emit("click");
+      const html = decodeURIComponent(
+        windows[0]!.loadURL.mock.lastCall![0]!.split(",").slice(1).join(","),
+      );
+      expect(html.indexOf('aria-label="Project progress"')).toBeLessThan(
+        html.indexOf('<section class="quotas">'),
+      );
+      expect(html).toContain("&lt;Project&gt;");
+      expect(html).toContain("Building &amp; testing");
+      expect(html).toContain("For 12m");
+      const [bounds] = native.BrowserWindow.mock.lastCall!;
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(900);
+    });
+  }),
+);
+
 it.effect("opens a bounded panel from the tray, updates it, and releases it on disposal", () =>
   Effect.gen(function* () {
     const { tray, windows } = setup();
@@ -134,7 +166,7 @@ it.effect("opens a bounded panel from the tray, updates it, and releases it on d
         items: [{ label: "Tokens today", value: "1.2K", action: "open-usage" }],
       });
       expect(window.loadURL).toHaveBeenCalledTimes(2);
-      expect(window.setBounds).toHaveBeenCalledWith(expect.objectContaining({ width: 480 }));
+      expect(window.setBounds).toHaveBeenCalledWith(expect.objectContaining({ width: 360 }));
     });
     expect(native.Tray).toHaveBeenCalledOnce();
     expect(tray.setTitle).toHaveBeenCalledWith("T3 Code");

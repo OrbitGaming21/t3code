@@ -52,7 +52,7 @@ export function SidebarUpdateReleaseNotes({
   readonly state: DesktopUpdateState;
   readonly tooltip: string;
 }) {
-  if (state.channel !== "nightly" || state.releaseNotes.length === 0) {
+  if ((!state.opensInstaller && state.channel !== "nightly") || state.releaseNotes.length === 0) {
     return <>{tooltip}</>;
   }
 
@@ -62,7 +62,7 @@ export function SidebarUpdateReleaseNotes({
         {state.status === "available" ? (
           <div>
             <div className="whitespace-nowrap text-sm leading-5 font-medium">
-              Update ready to download
+              {state.opensInstaller ? "Local update ready" : "Update ready to download"}
             </div>
             {state.availableVersion ? (
               <div className="mt-0.5 text-xs leading-4 text-muted-foreground">
@@ -76,7 +76,9 @@ export function SidebarUpdateReleaseNotes({
       </div>
       <div className="min-h-0 max-h-[min(28rem,calc(100vh-6rem))] overflow-y-auto px-1 pt-4 pb-1">
         {state.releaseNotes.map((releaseNote, index) => {
-          const releaseUrl = getDesktopUpdateReleaseUrl(releaseNote.version);
+          const releaseUrl = state.opensInstaller
+            ? null
+            : getDesktopUpdateReleaseUrl(releaseNote.version);
           const omittedItemCount = Math.max(0, releaseNote.totalItems - releaseNote.items.length);
           const linkLabel =
             omittedItemCount === 0
@@ -106,7 +108,7 @@ export function SidebarUpdateReleaseNotes({
             </div>
           );
         })}
-        {state.omittedReleaseCount > 0 ? (
+        {!state.opensInstaller && state.omittedReleaseCount > 0 ? (
           <div>
             <Separator className="my-3" />
             <ReleaseLink releaseUrl={getDesktopUpdateReleaseHistoryUrl()} shell={shell}>

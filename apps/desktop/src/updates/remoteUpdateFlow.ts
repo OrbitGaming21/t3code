@@ -34,6 +34,12 @@ export function nextRemoteDesktopUpdateStep(
   attempts: RemoteDesktopUpdateAttempts,
   disabledReason: string | null,
 ): RemoteDesktopUpdateStep {
+  if (state.opensInstaller)
+    return {
+      action: "done",
+      outcome: "failed",
+      reason: "Local builds must be installed on this Mac from its desktop app.",
+    };
   if (!state.enabled || state.status === "disabled") {
     return {
       action: "done",

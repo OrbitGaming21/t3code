@@ -87,6 +87,11 @@ export function getArm64IntelBuildWarningDescription(state: DesktopUpdateState):
 }
 
 export function getDesktopUpdateButtonTooltip(state: DesktopUpdateState): string {
+  if (state.opensInstaller && state.status === "available")
+    return `Local update ${state.availableVersion} ready. Click to prepare it.`;
+  if (state.opensInstaller && state.status === "downloaded") {
+    return `Local update ${state.downloadedVersion} ready. Click to restart and update.`;
+  }
   if (
     state.notAppliedVersion !== undefined &&
     (state.status === "available" || state.status === "downloaded") &&

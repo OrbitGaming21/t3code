@@ -1,3 +1,4 @@
+import * as DateTime from "effect/DateTime";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { expect, it } from "@effect/vitest";
 import { ScheduledTaskUpsertInput } from "@t3tools/contracts";
@@ -123,6 +124,54 @@ it.effect.each([
       const created = yield* service.upsert(decoded);
       expect(created.task.nextRunAt).toBe(expected);
       expect((yield* service.list()).tasks[0]?.nextRunAt).toBe(expected);
+    }).pipe(Effect.provide(serviceLayer));
+  }).pipe(
+    Effect.provideService(ServerActivation, Effect.never),
+    Effect.provide(SqlitePersistence.layerMemory),
+  ),
+);
+
+it.effect("finishes a one-time task without another due run and can rearm it at a new time", () =>
+  Effect.gen(function* () {
+    yield* TestClock.setTime(Date.parse("2026-10-27T12:00:00.000Z"));
+    yield* Effect.gen(function* () {
+      const service = yield* ScheduledTaskService.ScheduledTaskService;
+      const runAt = "2026-10-27T13:00:00.000Z";
+      const created = yield* service.upsert(
+        yield* decodeInput({
+          ...input,
+          commandId: "one-time-run",
+          schedule: { type: "once", runAt },
+        }),
+      );
+      expect(created.task.nextRunAt).toBe(runAt);
+      yield* TestClock.setTime(Date.parse(runAt));
+      const completed = yield* service.runNow({ id: created.task.id });
+      expect(completed.task.runCount).toBe(1);
+      expect(completed.task.nextRunAt).toBeNull();
+      expect(
+        yield* ScheduledTaskService.listDueTasks(DateTime.makeUnsafe("2026-10-28T12:00:00.000Z")),
+      ).toEqual([]);
+      const nextTime = "2026-10-28T13:00:00.000Z";
+      const rearmed = yield* service.upsert(
+        yield* decodeInput({
+          ...input,
+          id: created.task.id,
+          requireExisting: true,
+          schedule: { type: "once", runAt: nextTime },
+        }),
+      );
+      expect(rearmed.task.nextRunAt).toBe(nextTime);
+      const invalid = yield* service
+        .upsert(
+          yield* decodeInput({
+            ...input,
+            commandId: "one-time-past",
+            schedule: { type: "once", runAt: "2026-10-27T11:00:00.000Z" },
+          }),
+        )
+        .pipe(Effect.flip);
+      expect(invalid.message).toContain("future");
     }).pipe(Effect.provide(serviceLayer));
   }).pipe(
     Effect.provideService(ServerActivation, Effect.never),

@@ -1,3 +1,4 @@
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -5,6 +6,10 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 
 import { autoUpdater } from "electron-updater";
+import { app } from "electron";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+import { LocalInstaller, macLocalInstallerHost } from "../updates/localInstaller.ts";
 
 type AutoUpdater = typeof autoUpdater;
 
@@ -58,6 +63,7 @@ export type ElectronUpdaterError = typeof ElectronUpdaterError.Type;
 export class ElectronUpdater extends Context.Service<
   ElectronUpdater,
   {
+    readonly opensInstaller?: boolean;
     readonly setFeedURL: (options: ElectronUpdaterFeedUrl) => Effect.Effect<void>;
     readonly setAutoDownload: (value: boolean) => Effect.Effect<void>;
     readonly setAutoInstallOnAppQuit: (value: boolean) => Effect.Effect<void>;
@@ -183,4 +189,71 @@ export const make = ElectronUpdater.of({
   }),
 });
 
-export const layer = Layer.succeed(ElectronUpdater, make);
+export const layer = Layer.effect(
+  ElectronUpdater,
+  Effect.gen(function* () {
+    const platform = yield* HostProcess.Platform;
+    if (platform !== "darwin" || !app.isPackaged) return make;
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const configPath = path.join(process.resourcesPath, "local-updates.json");
+    if (!(yield* fs.exists(configPath))) return make;
+    const config = yield* fs
+      .readFileString(configPath)
+      .pipe(
+        Effect.flatMap(
+          Schema.decodeUnknownEffect(
+            Schema.fromJsonString(Schema.Struct({ directory: Schema.String })),
+          ),
+        ),
+      );
+    if (!path.isAbsolute(config.directory))
+      return yield* Effect.die(new Error("Invalid local update directory."));
+    const installer = new LocalInstaller(
+      config.directory,
+      app.getVersion(),
+      macLocalInstallerHost({
+        appBundle: path.resolve(app.getPath("exe"), "../../.."),
+        directory: config.directory,
+        pid: process.pid,
+        quit: () => app.quit(),
+      }),
+    );
+    return ElectronUpdater.of({
+      ...make,
+      opensInstaller: true,
+      checkForUpdates: Effect.tryPromise({
+        try: () => installer.checkForUpdates(),
+        catch: (cause) => new ElectronUpdaterCheckForUpdatesError({ channel: null, cause }),
+      }),
+      downloadUpdate: Effect.tryPromise({
+        try: () => installer.downloadUpdate(),
+        catch: (cause) => new ElectronUpdaterDownloadUpdateError({ channel: null, cause }),
+      }),
+      quitAndInstall: Effect.fn("ElectronUpdater.installLocalUpdate")(
+        ({ isSilent, isForceRunAfter }) =>
+          Effect.tryPromise({
+            try: () => installer.install(),
+            catch: (cause) =>
+              new ElectronUpdaterQuitAndInstallError({
+                channel: null,
+                isSilent,
+                isForceRunAfter,
+                cause,
+              }),
+          }),
+      ),
+      on: Effect.fn("ElectronUpdater.onLocalUpdate")((eventName, listener) =>
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            installer.on(eventName, listener);
+          }),
+          () =>
+            Effect.sync(() => {
+              installer.removeListener(eventName, listener);
+            }),
+        ),
+      ),
+    });
+  }),
+);

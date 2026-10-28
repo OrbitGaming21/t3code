@@ -94,6 +94,23 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.on(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
     return () => ipcRenderer.removeListener(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
   },
+  ...(clientPlatform === "darwin"
+    ? {
+        dictation: {
+          start: (input) => ipcRenderer.invoke(IpcChannels.DICTATION_START_CHANNEL, input),
+          stop: (input) => ipcRenderer.invoke(IpcChannels.DICTATION_STOP_CHANNEL, input),
+          onEvent: (listener) => {
+            const handler = (_event: Electron.IpcRendererEvent, message: unknown) => {
+              if (typeof message === "object" && message !== null && "type" in message) {
+                listener(message as Parameters<typeof listener>[0]);
+              }
+            };
+            ipcRenderer.on(IpcChannels.DICTATION_EVENT_CHANNEL, handler);
+            return () => ipcRenderer.removeListener(IpcChannels.DICTATION_EVENT_CHANNEL, handler);
+          },
+        } satisfies NonNullable<DesktopBridge["dictation"]>,
+      }
+    : {}),
   onTrackpadScrollEnd: (listener) => {
     const handler = () => listener();
     ipcRenderer.on(IpcChannels.TRACKPAD_SCROLL_END_CHANNEL, handler);

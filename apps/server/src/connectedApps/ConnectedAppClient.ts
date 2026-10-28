@@ -74,7 +74,11 @@ export const layer = Layer.succeed(ConnectedAppClient, {
               redirect_uris: app.redirectUrl ? [app.redirectUrl] : [],
               grant_types: ["authorization_code", "refresh_token"],
               response_types: ["code"],
-              token_endpoint_auth_method: "none",
+              token_endpoint_auth_method:
+                app.client !== undefined &&
+                OAuthClientInformationSchema.parse(app.client).client_secret
+                  ? "client_secret_post"
+                  : "none",
             };
           },
           state: () => {

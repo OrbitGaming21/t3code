@@ -4,6 +4,7 @@ import { receiveProviderAuthCallback, cancelProviderAuthCallback } from "./metho
 import * as DesktopIpc from "./DesktopIpc.ts";
 import { installMenuBarSummary } from "./methods/menuBarSummary.ts";
 import { installNotificationBadge } from "./methods/notificationBadge.ts";
+import { startDictation, stopDictation } from "./methods/dictation.ts";
 import { getClientSettings, setClientSettings } from "./methods/clientSettings.ts";
 import {
   clearConnectionCatalog,
@@ -94,6 +95,8 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(AppActivationIpc.setReady);
   yield* ipc.handle(AppActivationIpc.complete);
   yield* ipc.handle(WebLinksIpc.setReady);
+  yield* ipc.handle(startDictation);
+  yield* ipc.handle(stopDictation);
 
   yield* ipc.handleSync(takeLegacyLocalStorage);
   yield* ipc.handle(completeLegacyLocalStorage);
