@@ -16,7 +16,45 @@ const escapeHtml = (value: string) =>
     }
   });
 
-export function menuBarPanelHtml(summary: DesktopMenuBarSummary) {
+type MenuBarProject = NonNullable<DesktopMenuBarSummary["projects"]>[number];
+type MenuBarProjectStatus = MenuBarProject["status"];
+
+export const menuBarProjectKey = (project: MenuBarProject) =>
+  `${project.environment ?? ""}\u0000${project.name}`;
+
+/** Projects whose agents finished since the dropdown was last opened. */
+export function nextUnseenFinished(
+  previous: ReadonlyMap<string, MenuBarProjectStatus>,
+  unseen: ReadonlySet<string>,
+  projects: readonly MenuBarProject[],
+): Set<string> {
+  const next = new Set<string>();
+  for (const project of projects) {
+    const key = menuBarProjectKey(project);
+    const before = previous.get(key);
+    const finished = project.status === "completed" || project.status === "failed";
+    if (finished && (unseen.has(key) || before === "working" || before === "attention")) {
+      next.add(key);
+    }
+  }
+  return next;
+}
+
+export function menuBarTitle(projects: readonly MenuBarProject[], unseenFinished: number) {
+  const needs = projects.filter((project) => project.status === "attention").length;
+  const working = projects.filter((project) => project.status === "working").length;
+  const parts = [
+    needs ? `${needs} ${needs === 1 ? "needs" : "need"} you` : null,
+    unseenFinished ? `${unseenFinished} done` : null,
+    !needs && !unseenFinished && working ? `${working} working` : null,
+  ].filter((part) => part !== null);
+  return parts.length ? `T3 Code · ${parts.join(" · ")}` : "T3 Code";
+}
+
+export function menuBarPanelHtml(
+  summary: DesktopMenuBarSummary,
+  newlyFinished: ReadonlySet<string> = new Set(),
+) {
   const display = summary.display ?? DEFAULT_USAGE_DISPLAY_SETTINGS;
   const sizes = {
     compact: { usage: 18, reset: 12, body: 11, scale: 0.6 },
@@ -28,7 +66,7 @@ export function menuBarPanelHtml(summary: DesktopMenuBarSummary) {
   const projectContent =
     projects === undefined
       ? ""
-      : `<section class="projects" aria-label="Project progress"><h2>Project progress</h2><div class="project-list">${projects.length ? projects.map((project) => `<a class="project" href="https://t3-menu.invalid/open-app" data-status="${project.status}"><div class="project-top"><strong>${escapeHtml(project.name)}</strong>${project.duration ? `<span class="duration">${escapeHtml(project.duration)}</span>` : ""}</div><div class="project-status"><span class="status-dot"></span>${escapeHtml(project.label)}</div>${project.detail ? `<div class="detail">${escapeHtml(project.detail)}</div>` : ""}${project.environment ? `<div class="project-environment">${escapeHtml(project.environment)}</div>` : ""}</a>`).join("") : '<p class="empty">No projects yet</p>'}</div></section>`;
+      : `<section class="projects" aria-label="Project progress"><h2>Project progress</h2><div class="project-list">${projects.length ? projects.map((project) => `<a class="project" href="https://t3-menu.invalid/open-app" data-status="${project.status}"${newlyFinished.has(menuBarProjectKey(project)) ? ' data-new="true"' : ""}><div class="project-top"><strong>${escapeHtml(project.name)}</strong>${newlyFinished.has(menuBarProjectKey(project)) ? '<span class="new">New</span>' : ""}${project.duration ? `<span class="duration">${escapeHtml(project.duration)}</span>` : ""}</div><div class="project-status"><span class="status-dot"></span>${escapeHtml(project.label)}</div>${project.detail ? `<div class="detail">${escapeHtml(project.detail)}</div>` : ""}${project.environment ? `<div class="project-environment">${escapeHtml(project.environment)}</div>` : ""}</a>`).join("") : '<p class="empty">No projects yet</p>'}</div></section>`;
   const content = display.order
     .filter((section) => !display.hidden.includes(section))
     .map((section) => {
@@ -96,6 +134,11 @@ h2 { margin: 0 0 calc(10px * var(--spacing-scale)); font-size: var(--body-size);
 .project[data-status="failed"] .status-dot { background: #d65353; }
 .project[data-status="completed"] .status-dot { background: #389b69; }
 .project .detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project[data-status="attention"] { border-color: #d18b25; background: light-dark(#fdf5e9, #33291a); }
+.project[data-new="true"] { border-color: #389b69; background: light-dark(#ecf7f1, #1d2e25); }
+.project[data-new="true"][data-status="failed"] { border-color: #d65353; background: light-dark(#fcefef, #352020); }
+.new { flex-shrink: 0; margin-left: auto; padding: 0 6px; border-radius: 999px; background: #389b69; color: #fff; font-size: 10px; font-weight: 600; }
+.project[data-status="failed"] .new { background: #d65353; }
 .project-environment { color: var(--muted); font-size: 10px; margin-top: 2px; }
 .quotas { display: grid; gap: calc(12px * var(--spacing-scale)); }
 .quota { display: block; border: 1px solid var(--border); border-radius: 12px; padding: calc(16px * var(--spacing-scale)); background: var(--card); }

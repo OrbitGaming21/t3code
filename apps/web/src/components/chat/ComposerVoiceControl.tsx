@@ -10,9 +10,12 @@ import { cancelSpeech, speak, spokenReplyText } from "../../voice/speechOutput";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { cn } from "~/lib/utils";
 
 // Conversation mode sends once you pause this long after speaking.
 const CONVERSATION_PAUSE_MS = 1600;
+// Recognizers report words every few hundred milliseconds while you speak.
+const HEARING_HOLD_MS = 700;
 
 export type VoiceReply = { readonly id: string; readonly text: string };
 
@@ -35,13 +38,18 @@ export function ComposerVoiceControl({
   const [conversation, setConversation] = useState(false);
   const [awaitingReplyAfter, setAwaitingReplyAfter] = useState<string | null>(null);
   const [partial, setPartial] = useState("");
+  const [hearing, setHearing] = useState(false);
   const sessionRef = useRef<SpeechInputSession | null>(null);
   const pauseTimerRef = useRef<number | null>(null);
+  const hearingTimerRef = useRef<number | null>(null);
   const conversationRef = useRef(false);
 
   const clearPauseTimer = () => {
     if (pauseTimerRef.current !== null) window.clearTimeout(pauseTimerRef.current);
     pauseTimerRef.current = null;
+    if (hearingTimerRef.current !== null) window.clearTimeout(hearingTimerRef.current);
+    hearingTimerRef.current = null;
+    setHearing(false);
   };
 
   const endConversation = () => {
@@ -58,8 +66,12 @@ export function ComposerVoiceControl({
       {
         onPartial: (text) => {
           setPartial(text);
-          if (mode !== "converse" || text.trim().length === 0) return;
-          clearPauseTimer();
+          if (text.trim().length === 0) return;
+          setHearing(true);
+          if (hearingTimerRef.current !== null) window.clearTimeout(hearingTimerRef.current);
+          hearingTimerRef.current = window.setTimeout(() => setHearing(false), HEARING_HOLD_MS);
+          if (mode !== "converse") return;
+          if (pauseTimerRef.current !== null) window.clearTimeout(pauseTimerRef.current);
           pauseTimerRef.current = window.setTimeout(
             () => sessionRef.current?.stop(),
             CONVERSATION_PAUSE_MS,
@@ -133,6 +145,7 @@ export function ComposerVoiceControl({
     () => () => {
       sessionRef.current?.cancel();
       if (pauseTimerRef.current !== null) window.clearTimeout(pauseTimerRef.current);
+      if (hearingTimerRef.current !== null) window.clearTimeout(hearingTimerRef.current);
       cancelSpeech();
     },
     [],
@@ -171,11 +184,43 @@ export function ComposerVoiceControl({
         : "Listening… click to end conversation"
     : "Start voice conversation";
 
+  const status = listening
+    ? hearing
+      ? "You're talking"
+      : "Listening…"
+    : speaking
+      ? "Reading reply…"
+      : conversation && awaitingReplyAfter !== null
+        ? "Waiting for reply…"
+        : null;
+
   return (
     <>
-      {listening && partial ? (
-        <span className="max-w-48 truncate text-muted-foreground text-xs" aria-live="polite">
-          {partial}
+      {status ? (
+        <span
+          role="status"
+          aria-live="polite"
+          data-voice-state={listening ? (hearing ? "hearing" : "listening") : "idle"}
+          className={cn(
+            "flex h-7 min-w-0 max-w-64 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors duration-150",
+            listening && hearing && "border-destructive bg-destructive text-white",
+            listening &&
+              !hearing &&
+              "border-destructive/60 bg-destructive/10 text-destructive-foreground",
+            !listening && "border-border text-muted-foreground",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "size-2 shrink-0 rounded-full",
+              listening && hearing && "bg-white ring-2 ring-white/40",
+              listening && !hearing && "border border-destructive",
+              !listening && "bg-muted-foreground/60",
+            )}
+          />
+          <span className="shrink-0 font-medium">{status}</span>
+          {listening && partial ? <span className="truncate opacity-80">{partial}</span> : null}
         </span>
       ) : null}
       <Tooltip>

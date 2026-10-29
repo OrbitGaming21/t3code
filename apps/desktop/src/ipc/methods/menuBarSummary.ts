@@ -11,7 +11,12 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as DesktopWindow from "../../window/DesktopWindow.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
 import { SET_MENU_BAR_SUMMARY_CHANNEL } from "../channels.ts";
-import { menuBarPanelHtml } from "./menuBarPanel.ts";
+import {
+  menuBarPanelHtml,
+  menuBarProjectKey,
+  menuBarTitle,
+  nextUnseenFinished,
+} from "./menuBarPanel.ts";
 
 export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummary")(function* () {
   const ipc = yield* DesktopIpc.DesktopIpc;
@@ -22,15 +27,28 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
   let panel: Electron.BrowserWindow | null = null;
   let summary: DesktopMenuBarSummary = { items: [] };
   let loadVersion = 0;
+  let previousStatus = new Map<
+    string,
+    NonNullable<DesktopMenuBarSummary["projects"]>[number]["status"]
+  >();
+  let unseenFinished = new Set<string>();
+  let shownAsNew = new Set<string>();
+  const updateTitle = () => {
+    if (tray === null || tray.isDestroyed()) return;
+    tray.setTitle(menuBarTitle(summary.projects ?? [], unseenFinished.size));
+  };
 
   const closePanel = () => {
     if (panel !== null && !panel.isDestroyed()) panel.destroy();
     panel = null;
+    shownAsNew = new Set();
   };
   const loadPanel = (window: Electron.BrowserWindow) => {
     const version = ++loadVersion;
     void window
-      .loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(menuBarPanelHtml(summary))}`)
+      .loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(menuBarPanelHtml(summary, shownAsNew))}`,
+      )
       .catch((error: unknown) => {
         if (window.isDestroyed() || version !== loadVersion) return;
         closePanel();
@@ -82,6 +100,9 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
     if (tray === null || tray.isDestroyed()) return;
     const bounds = panelBounds();
     if (!bounds) return;
+    shownAsNew = unseenFinished;
+    unseenFinished = new Set();
+    updateTitle();
     const window = new Electron.BrowserWindow({
       ...bounds,
       type: "panel",
@@ -142,13 +163,18 @@ export const installMenuBarSummary = Effect.fn("desktop.ipc.installMenuBarSummar
         Effect.sync(() => {
           if (platform !== "darwin") return;
           summary = next;
+          const projects = next.projects ?? [];
+          unseenFinished = nextUnseenFinished(previousStatus, unseenFinished, projects);
+          previousStatus = new Map(
+            projects.map((project) => [menuBarProjectKey(project), project.status]),
+          );
           if (tray === null || tray.isDestroyed()) {
             tray = new Electron.Tray(Electron.nativeImage.createEmpty());
-            tray.setTitle("T3 Code");
             tray.setToolTip("T3 Code project progress, usage and reset times");
             tray.on("click", togglePanel);
             tray.on("right-click", togglePanel);
           }
+          updateTitle();
           if (panel !== null && !panel.isDestroyed()) {
             const bounds = panelBounds();
             if (bounds) panel.setBounds(bounds);

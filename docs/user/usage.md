@@ -168,7 +168,9 @@ On web and desktop, open **T3 Code** at the top of the sidebar or use the bottom
 for estimated token costs today and over the last 7 days, reported provider limits, and scheduled tasks. The overview follows
 the current thread's environment, or your primary environment outside a thread. Use the
 refresh button to update totals from available history. Token costs show the value of recorded usage at API prices, not an invoice or additional subscription charges. Missing prices are marked unpriced or as a lower bound. On the macOS desktop app, the
-same summary also appears under **T3 Code** in the menu bar while the app is running.
+same summary also appears under **T3 Code** in the menu bar while the app is running. The
+menu bar title counts projects that need you and agents that finished since you last opened
+it; for alerts while you are away, turn on **Settings → Notifications**.
 The Mac menu also shows project activity across your environments, including work that needs
 input or approval. Elapsed time starts with the oldest currently active agent in each project;
 when work finishes, the menu shows the latest run's duration. Unavailable environments are marked
