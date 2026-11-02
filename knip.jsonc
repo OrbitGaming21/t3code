@@ -60,6 +60,10 @@
       // CLI archive and desktop sidecar stage them from this manifest.
       "ignoreDependencies": ["@effect/platform-node-shared", "@t3tools/web", "@napi-rs/keyring"],
     },
+    "apps/browser-extension": {
+      // The browser loads these scripts from manifest.json and the extension's HTML pages.
+      "entry": ["background.js!", "popup.js!", "options.js!"],
+    },
     "apps/desktop": {
       // Electron loads these bundles by filename rather than importing them.
       "entry": [

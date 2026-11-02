@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>T3 Code extension settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="options">
+    <form id="form">
+      <fieldset>
+        <legend>Open drafts in</legend>
+        <label class="check">
+          <input type="radio" name="target" value="app" />
+          <span>The T3 Code desktop app</span>
+        </label>
+        <label class="check">
+          <input type="radio" name="target" value="web" />
+          <span>T3 Code on the web</span>
+        </label>
+      </fieldset>
+      <label class="field">
+        <span>Web address</span>
+        <input id="web-origin" type="url" placeholder="https://app.t3.codes" />
+        <small class="hint">
+          Use https://app.t3.codes, or the address of a T3 Code server you run, such as
+          http://localhost:3773.
+        </small>
+      </label>
+      <p class="hint" id="saved" role="status"></p>
+    </form>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

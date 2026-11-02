@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ask T3 Code</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="popup">
+    <form id="form">
+      <textarea
+        id="ask"
+        rows="5"
+        placeholder="What should the agent do? (optional)"
+        aria-label="Prompt"
+        autofocus
+      ></textarea>
+      <label class="check">
+        <input id="include-page" type="checkbox" checked />
+        <span>Include this page</span>
+      </label>
+      <label class="check" id="selection-row" hidden>
+        <input id="include-selection" type="checkbox" checked />
+        <span id="selection-label">Include selected text</span>
+      </label>
+      <p class="hint" id="github-hint" hidden></p>
+      <div class="actions">
+        <a href="#" id="settings" class="link">Settings</a>
+        <button type="submit" id="send">Open in T3 Code</button>
+      </div>
+      <p class="hint">The draft opens for you to review. Nothing is sent until you press Send.</p>
+    </form>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

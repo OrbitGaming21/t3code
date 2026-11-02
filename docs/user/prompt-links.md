@@ -54,3 +54,18 @@ before it replaces it.
 T3 Code removes characters you cannot see, such as zero-width and hidden tag characters, because
 they can hide instructions for the agent. When a prompt had them, T3 Code warns you that it may be
 malicious.
+
+## Send a page from your browser
+
+The T3 Code browser extension for Chrome, Edge, and other Chromium browsers turns the page you
+are on into a prompt link. To install it, open `chrome://extensions`, turn on **Developer mode**,
+choose **Load unpacked**, and select the `apps/browser-extension` folder of the T3 Code source.
+
+- Click the T3 Code toolbar button, or press Alt+Shift+T, to write a request. The page address
+  and any text you selected are added to it.
+- Right-click selected text, a link, or the page and choose **Ask T3 Code**.
+- On GitHub, the draft opens in your project for that repository. On a pull request, it opens
+  that pull request's thread.
+
+Drafts open in the desktop app. To use the web app or your own server instead, open the
+extension's **Settings**. Long selections are shortened to fit the 8,000-character limit.

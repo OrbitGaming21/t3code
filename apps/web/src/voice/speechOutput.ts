@@ -20,7 +20,7 @@ export function spokenReplyText(markdown: string): string {
   return sentenceEnd > MAX_SPOKEN_CHARS / 2 ? cut.slice(0, sentenceEnd + 1) : `${cut}…`;
 }
 
-export function isSpeechOutputAvailable(): boolean {
+function isSpeechOutputAvailable(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
