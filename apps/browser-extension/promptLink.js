@@ -1,3 +1,5 @@
+import { browserApi } from "./browserApi.js";
+
 // Mirrors packages/shared/src/promptLinks.ts; the extension loads unbuilt, so it cannot import it.
 export const MAX_PROMPT_LENGTH = 8000;
 export const DEFAULT_WEB_ORIGIN = "https://app.t3.codes";
@@ -76,15 +78,15 @@ export function buildPromptLink(prompt, settings, github = null) {
 
 /** @returns {Promise<OpenSettings>} */
 export async function readSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  const stored = await browserApi().storage.sync.get(DEFAULT_SETTINGS);
   return { ...DEFAULT_SETTINGS, ...stored };
 }
 
 /** The app scheme hands off to T3 Code without leaving the page; the web app needs a tab. */
 export async function openPromptLink(link, tabId) {
   if (link.startsWith("t3code:") && tabId !== undefined) {
-    await chrome.tabs.update(tabId, { url: link });
+    await browserApi().tabs.update(tabId, { url: link });
   } else {
-    await chrome.tabs.create({ url: link });
+    await browserApi().tabs.create({ url: link });
   }
 }

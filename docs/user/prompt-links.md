@@ -57,9 +57,15 @@ malicious.
 
 ## Send a page from your browser
 
-The T3 Code browser extension for Chrome, Edge, and other Chromium browsers turns the page you
-are on into a prompt link. To install it, open `chrome://extensions`, turn on **Developer mode**,
-choose **Load unpacked**, and select the `apps/browser-extension` folder of the T3 Code source.
+The T3 Code browser extension targets Firefox 121+ and Chrome 123+. It turns
+pages and selected text into draft prompts. Both browsers load the same `apps/browser-extension`
+folder from the T3 Code source.
+
+- **Firefox:** open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**,
+  and select `apps/browser-extension/manifest.json`. This development install lasts until Firefox
+  restarts; a permanent install requires a Mozilla-signed release.
+- **Chrome:** open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked**,
+  and select the `apps/browser-extension` folder.
 
 - Click the T3 Code toolbar button, or press Alt+Shift+T, to write a request. The page address
   and any text you selected are added to it.

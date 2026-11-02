@@ -1,3 +1,5 @@
+import { browserApi } from "./browserApi.js";
+
 import {
   buildPromptLink,
   composePrompt,
@@ -17,7 +19,7 @@ const selectionLabel = /** @type {HTMLElement} */ (document.getElementById("sele
 const githubHint = /** @type {HTMLElement} */ (document.getElementById("github-hint"));
 const send = /** @type {HTMLButtonElement} */ (document.getElementById("send"));
 
-const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+const [tab] = await browserApi().tabs.query({ active: true, currentWindow: true });
 const pageUrl = tab?.url && /^https?:/.test(tab.url) ? tab.url : null;
 const github = pageUrl ? githubContext(pageUrl) : null;
 const settings = await readSettings();
@@ -39,7 +41,7 @@ send.textContent = settings.target === "app" ? "Open in T3 Code" : "Open in T3 C
 let selection = "";
 if (tab?.id !== undefined && pageUrl) {
   try {
-    const [result] = await chrome.scripting.executeScript({
+    const [result] = await browserApi().scripting.executeScript({
       target: { tabId: tab.id },
       func: () => window.getSelection()?.toString() ?? "",
     });
@@ -83,5 +85,5 @@ form.addEventListener("submit", async (event) => {
 
 document.getElementById("settings")?.addEventListener("click", (event) => {
   event.preventDefault();
-  void chrome.runtime.openOptionsPage();
+  void browserApi().runtime.openOptionsPage();
 });

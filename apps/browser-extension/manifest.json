@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "T3 Code",
   "description": "Send the page you're on, or text you selected, to T3 Code as a draft prompt.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -15,7 +15,8 @@
   },
   "background": {
     "service_worker": "background.js",
-    "type": "module"
+    "type": "module",
+    "scripts": ["background.js"]
   },
   "options_ui": {
     "page": "options.html",
@@ -24,8 +25,17 @@
   "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Alt+Shift+T" },
+      "suggested_key": {
+        "default": "Alt+Shift+T"
+      },
       "description": "Ask T3 Code about this page"
+    }
+  },
+  "minimum_chrome_version": "123",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{b4d1837b-f095-4be7-a099-28c1797580cb}",
+      "strict_min_version": "121.0"
     }
   }
 }

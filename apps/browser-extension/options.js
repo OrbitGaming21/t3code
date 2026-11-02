@@ -1,3 +1,5 @@
+import { browserApi } from "./browserApi.js";
+
 import { DEFAULT_WEB_ORIGIN, readSettings } from "./promptLink.js";
 
 const form = /** @type {HTMLFormElement} */ (document.getElementById("form"));
@@ -15,7 +17,7 @@ form.addEventListener("change", async () => {
   webOrigin.disabled = target !== "web";
   const origin = webOrigin.value.trim();
   const valid = URL.canParse(origin) && /^https?:$/.test(new URL(origin).protocol);
-  await chrome.storage.sync.set({
+  await browserApi().storage.sync.set({
     target,
     webOrigin: valid ? new URL(origin).origin : DEFAULT_WEB_ORIGIN,
   });

@@ -1,5 +1,5 @@
 import { parseNewThreadLink, promptLinkAppPath } from "@t3tools/shared/promptLinks";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   DEFAULT_SETTINGS,
@@ -7,6 +7,8 @@ import {
   buildPromptLink,
   composePrompt,
   githubContext,
+  openPromptLink,
+  readSettings,
 } from "./promptLink.js";
 
 describe("githubContext", () => {
@@ -80,5 +82,28 @@ describe("buildPromptLink", () => {
       ok: true,
       value: { kind: "pull-request", pullRequest: { number: 7 } },
     });
+  });
+});
+
+describe.each(["browser", "chrome"])("%s extension API", (namespace) => {
+  it("reads saved settings and opens desktop and web drafts", async () => {
+    const settings = { target: "web", webOrigin: "https://t3.example.com" };
+    const get = vi.fn().mockResolvedValue(settings);
+    const update = vi.fn().mockResolvedValue({});
+    const create = vi.fn().mockResolvedValue({});
+    vi.stubGlobal("browser", undefined);
+    vi.stubGlobal("chrome", undefined);
+    vi.stubGlobal(namespace, { storage: { sync: { get } }, tabs: { update, create } });
+    try {
+      expect(await readSettings()).toEqual(settings);
+      const appLink = buildPromptLink("Explain", DEFAULT_SETTINGS);
+      await openPromptLink(appLink, 42);
+      expect(update).toHaveBeenCalledWith(42, { url: appLink });
+      const webLink = buildPromptLink("Explain", { target: "web", webOrigin: settings.webOrigin });
+      await openPromptLink(webLink, 42);
+      expect(create).toHaveBeenCalledWith({ url: webLink });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
