@@ -42,7 +42,7 @@ jobs:
           $p = Start-Process $setup -ArgumentList "modify", "--installPath", "`"$installPath`"", "--add", "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre", "--quiet", "--norestart" -Wait -PassThru
           if ($p.ExitCode -notin @(0,3010)) { exit $p.ExitCode }
       - name: Build Windows installer
-        run: vp run dist:desktop:win:x64 -- --verbose
+        run: node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64 --verbose
       - name: Preserve Windows installer
         uses: actions/upload-artifact@v4
         with:
