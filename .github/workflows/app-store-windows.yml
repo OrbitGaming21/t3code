@@ -1,0 +1,59 @@
+name: App Store Windows T3 Code
+on:
+  push:
+    branches: [app-store-windows-build]
+    paths: [.github/workflows/app-store-windows.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 75
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      T3CODE_DESKTOP_UPDATE_REPOSITORY: OrbitGaming21/t3code
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: HockeyQuebec/t3code
+          ref: night-runner-0.0.42-a816993
+          persist-credentials: false
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb
+        with:
+          node-version-file: package.json
+          cache: false
+          run-install: false
+      - name: Install build dependencies
+        run: vp install --filter=@t3tools/desktop... --filter=t3... --filter=@t3tools/scripts...
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Install required Windows build libraries
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installPath = & $vswhere -products * -latest -property installationPath
+          $setup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $p = Start-Process $setup -ArgumentList "modify", "--installPath", "`"$installPath`"", "--add", "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre", "--quiet", "--norestart" -Wait -PassThru
+          if ($p.ExitCode -notin @(0,3010)) { exit $p.ExitCode }
+      - name: Build Windows installer
+        run: vp run dist:desktop:win:x64 -- --verbose
+      - name: Preserve Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: t3-code-windows-x64
+          path: release/*.exe
+          if-no-files-found: error
+      - name: Publish Windows installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem release -Filter *.exe
+          if (!$files) { throw 'Windows installer missing' }
+          gh release create windows-night-runner-0.0.42 $files.FullName --repo OrbitGaming21/t3code --title 'T3 Code 0.0.42 for Windows' --notes 'Windows x64 build of HockeyQuebec/t3code night-runner-0.0.42-a816993. Unsigned community build.'
