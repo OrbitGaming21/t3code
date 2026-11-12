@@ -26,8 +26,8 @@ require a separate Codex instance authenticated with an API key. In **Settings â
 connect an existing Codex CLI profile that uses API-key authentication, keeping its home
 separate from your subscription profile. Switching billing selects the corresponding
 connected instance; it never automatically falls back to API charges. Conversation
-history has no app-imposed chat count limit. API-billed prompts do not use the subscription
-ceiling setting.
+history has no app-imposed chat count limit. API-billed prompts are not stopped by the
+usage stop line.
 
 ## Formatting
 

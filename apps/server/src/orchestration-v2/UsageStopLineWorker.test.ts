@@ -4,22 +4,22 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
 import * as Scheduler from "../scheduling/Scheduler.ts";
-import * as PromptUsageBudget from "../usage/PromptUsageBudget.ts";
+import * as UsageStopLine from "../usage/UsageStopLine.ts";
 import * as Orchestrator from "./Orchestrator.ts";
-import * as PromptUsageBudgetWorker from "./PromptUsageBudgetWorker.ts";
+import * as UsageStopLineWorker from "./UsageStopLineWorker.ts";
 
-it.effect("interrupts the budgeted run, holds its queue, and acknowledges the stop", () =>
+it.effect("interrupts a run past the stop line, holds its queue, and acknowledges the stop", () =>
   Effect.gen(function* () {
     const commands = yield* Ref.make<readonly OrchestrationV2ServerCommand[]>([]);
     const ended = yield* Ref.make<readonly RunId[]>([]);
-    const runId = RunId.make("run:budgeted");
-    const threadId = ThreadId.make("thread:budgeted");
+    const runId = RunId.make("run:stopped");
+    const threadId = ThreadId.make("thread:stopped");
     yield* Layer.build(
-      PromptUsageBudgetWorker.layer.pipe(
+      UsageStopLineWorker.layer.pipe(
         Layer.provide(
           Layer.mergeAll(
-            Layer.mock(PromptUsageBudget.PromptUsageBudget)({
-              poll: Effect.succeed([{ runId, threadId, reason: "Prompt budget reached." }]),
+            Layer.mock(UsageStopLine.UsageStopLine)({
+              poll: Effect.succeed([{ runId, threadId, reason: "Stop line reached." }]),
               end: (id) => Ref.update(ended, (items) => [...items, id]),
             }),
             Layer.mock(Orchestrator.OrchestratorV2)({
@@ -38,10 +38,10 @@ it.effect("interrupts the budgeted run, holds its queue, and acknowledges the st
     expect(yield* Ref.get(commands)).toEqual([
       {
         type: "run.interrupt",
-        commandId: CommandId.make(`prompt-budget:${runId}`),
+        commandId: CommandId.make(`usage-stop-line:${runId}`),
         runId,
         threadId,
-        reason: "Prompt budget reached.",
+        reason: "Stop line reached.",
         holdQueue: true,
       },
     ]);

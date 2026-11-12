@@ -9,12 +9,12 @@ import {
   validateSettingsRouteSearch,
 } from "../components/settings/settingsScopeNavigation";
 import { useOverviewEnvironmentId } from "../components/usage/UsageOverview";
-import { PromptUsageBudgetSettings } from "../components/usage/PromptUsageBudgetSettings";
+import { UsageStopLineSettings } from "../components/usage/UsageStopLineSettings";
 
 function ScheduledTasksPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const ceilingEnvironmentId = useOverviewEnvironmentId();
+  const stopLineEnvironmentId = useOverviewEnvironmentId();
   return (
     <SettingsScopeProvider
       search={search}
@@ -30,8 +30,8 @@ function ScheduledTasksPage() {
           <header className="flex h-12 shrink-0 items-center gap-3 border-b ps-5 pe-2">
             <h1 className="text-sm font-medium">Scheduled tasks</h1>
             <div className="ms-auto flex shrink-0 items-center gap-3 text-xs">
-              {ceilingEnvironmentId ? (
-                <PromptUsageBudgetSettings environmentId={ceilingEnvironmentId} compact inline />
+              {stopLineEnvironmentId ? (
+                <UsageStopLineSettings environmentId={stopLineEnvironmentId} compact inline />
               ) : null}
               <AppRouteModalClose />
             </div>

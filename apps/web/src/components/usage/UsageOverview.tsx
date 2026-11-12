@@ -1,7 +1,7 @@
 import { UsageDisplaySettingsMenu } from "./UsageDisplaySettings";
 import { cn } from "../../lib/utils";
 import type { UsageDisplaySection, UsageDisplaySettings } from "@t3tools/contracts";
-import { PromptUsageBudgetSettings } from "./PromptUsageBudgetSettings";
+import { UsageStopLineSettings } from "./UsageStopLineSettings";
 import { mergeUsage } from "@t3tools/shared/usageMerge";
 import { USAGE_CONTRACT_VERSION } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
@@ -181,7 +181,7 @@ function EnvironmentOverview({
     ?.filter((task) => task.nextRunAt !== null)
     .toSorted((a, b) => a.nextRunAt!.localeCompare(b.nextRunAt!))[0];
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
-  const ceiling = settings?.promptUsageBudgetPercent ?? null;
+  const stopLine = settings?.promptUsageBudgetPercent ?? null;
   const unpriced = merged?.costQuality.unpricedShare ?? 0;
   const costLabel = (cost: number | undefined) =>
     cost === undefined
@@ -255,10 +255,10 @@ function EnvironmentOverview({
         action: "open-scheduled-tasks",
       },
       {
-        label: "Default ceiling per prompt",
+        label: "Usage stop line",
         section: "ceiling",
-        value: ceiling === null ? "Off" : `${ceiling}%`,
-        detail: "Subscription allowance",
+        value: stopLine === null ? "Off" : `${stopLine}%`,
+        detail: "Agents stop at this usage",
         action: "open-scheduled-tasks",
       },
     ],
@@ -382,8 +382,8 @@ function EnvironmentOverview({
           style={usageSectionStyle(display, "ceiling")}
           className="w-52 shrink-0 space-y-2 border-s border-border ps-6"
         >
-          <PromptUsageBudgetSettings environmentId={environmentId} compact />
-          <p className="text-xs text-muted-foreground">Subscription allowance per prompt</p>
+          <UsageStopLineSettings environmentId={environmentId} compact />
+          <p className="text-xs text-muted-foreground">Agents stop at this usage</p>
         </section>
       </div>
     );
@@ -430,7 +430,7 @@ function EnvironmentOverview({
         </Button>
       </section>
       <section style={usageSectionStyle(display, "ceiling")} className="max-w-80">
-        <PromptUsageBudgetSettings environmentId={environmentId} />
+        <UsageStopLineSettings environmentId={environmentId} />
       </section>
     </div>
   );

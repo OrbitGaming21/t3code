@@ -9,8 +9,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 
-/** Ceiling per prompt for one chat; without one, the environment ceiling applies. */
-export function ChatCeilingControl({
+/** Usage stop line for one chat; without one, the environment stop line applies. */
+export function ChatStopLineControl({
   environmentId,
   threadId,
 }: {
@@ -19,14 +19,14 @@ export function ChatCeilingControl({
 }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
-  const save = useAtomCommand(serverEnvironment.updateSettings, "chat ceiling per prompt");
+  const save = useAtomCommand(serverEnvironment.updateSettings, "chat usage stop line");
   const override = settings?.promptUsageBudgetByThread[threadId];
   const fallback = settings?.promptUsageBudgetPercent ?? null;
   const effective = override === undefined ? fallback : override.percent;
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const percent = Number(value);
-  const valid = value.trim() !== "" && Number.isInteger(percent) && percent >= 0 && percent <= 100;
+  const valid = value.trim() !== "" && Number.isInteger(percent) && percent >= 1 && percent <= 100;
   const apply = async (next: { percent: number | null } | null) => {
     if (!canSave || saving) return;
     setSaving(true);
@@ -37,11 +37,11 @@ export function ChatCeilingControl({
     if (result._tag === "Success") setValue("");
     setSaving(false);
   };
-  const label = effective === null ? "No ceiling" : `${effective}% max`;
+  const label = effective === null ? "No stop line" : `Stop at ${effective}%`;
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button size="sm" variant="ghost" aria-label={`Ceiling per prompt: ${label}`} />}
+        render={<Button size="sm" variant="ghost" aria-label={`Usage stop line: ${label}`} />}
       >
         <GaugeIcon />
         <span className="hidden md:inline">{label}</span>
@@ -49,12 +49,12 @@ export function ChatCeilingControl({
       <PopoverPopup width="md" align="start">
         <div className="space-y-3 text-sm">
           <div>
-            <h2 className="font-semibold">Ceiling per prompt for this chat</h2>
+            <h2 className="font-semibold">Usage stop line for this chat</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Stops a prompt once it uses this much of a subscription quota window.{" "}
+              Stops this chat's prompts once a subscription usage window reaches this percent used.{" "}
               {override === undefined
                 ? `Using the default: ${fallback === null ? "off" : `${fallback}%`}.`
-                : "This chat has its own ceiling."}
+                : "This chat has its own stop line."}
             </p>
           </div>
           <form
@@ -67,10 +67,10 @@ export function ChatCeilingControl({
             <span className="w-20">
               <Input
                 type="number"
-                min={0}
+                min={1}
                 max={100}
                 step={1}
-                aria-label="Chat ceiling percent"
+                aria-label="Chat usage stop line percent"
                 placeholder={effective === null ? "Off" : String(effective)}
                 value={value}
                 disabled={!canSave || saving}

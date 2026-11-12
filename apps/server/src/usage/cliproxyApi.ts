@@ -55,22 +55,6 @@ const ClaudeWindow = Schema.Struct({
 const ClaudeUsage = Schema.Struct({
   five_hour: Schema.optional(Schema.NullOr(ClaudeWindow)),
   seven_day: Schema.optional(Schema.NullOr(ClaudeWindow)),
-  limits: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        kind: Schema.String,
-        percent: Schema.optional(Schema.NullOr(Schema.Number)),
-        resets_at: Schema.optional(Schema.NullOr(Schema.String)),
-        scope: Schema.optional(
-          Schema.NullOr(
-            Schema.Struct({
-              model: Schema.optional(Schema.NullOr(Schema.Struct({ display_name: Schema.String }))),
-            }),
-          ),
-        ),
-      }),
-    ),
-  ),
 });
 const CreditList = Schema.Struct({
   credits: Schema.Array(
@@ -268,17 +252,6 @@ export const makeCliproxyApi = Effect.gen(function* () {
       if (account.provider === "claude") {
         const body = yield* apiCall(config, account, "https://api.anthropic.com/api/oauth/usage");
         const usage = yield* decodeClaudeUsage(body);
-        const model_scoped = (usage.limits ?? []).flatMap((limit) =>
-          limit.kind === "weekly_scoped" && limit.scope?.model && typeof limit.percent === "number"
-            ? [
-                {
-                  display_name: limit.scope.model.display_name,
-                  utilization: limit.percent,
-                  resets_at: limit.resets_at ?? null,
-                },
-              ]
-            : [],
-        );
         return {
           ...base,
           plan: "Claude Subscription",
@@ -289,7 +262,6 @@ export const makeCliproxyApi = Effect.gen(function* () {
               rate_limits: {
                 five_hour: usage.five_hour ?? null,
                 seven_day: usage.seven_day ?? null,
-                model_scoped,
               },
             },
           }).limits,

@@ -26,9 +26,6 @@ const WINDOWS: Readonly<
   seven_day: { kind: "weekly", label: "Weekly", windowDurationMins: WEEK_MINS },
 };
 
-/** Reuse probed display names for streamed bucket types so mid-turn updates target the same row. */
-const OVERAGE_INCLUDED_EVENT_TYPE = "seven_day_overage_included";
-
 // The SDK does not yet type the spend budget returned by `get_usage`.
 const SpendMoney = Schema.Struct({
   amount_minor: Schema.Natural,
@@ -46,25 +43,6 @@ export interface ClaudeScopedLimitNames {
 export const makeClaudeScopedLimitNames = Ref.make<ClaudeScopedLimitNames>({
   overageIncluded: undefined,
 });
-
-function scopedWindowId(displayName: string): string {
-  return `seven_day_${displayName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
-}
-
-function scopedWindow(
-  displayName: string,
-  usedPercent: number,
-  resetsAt: string | undefined,
-): ServerProviderUsageWindow {
-  return {
-    id: scopedWindowId(displayName),
-    kind: "weekly",
-    label: `Weekly · ${displayName}`,
-    windowDurationMins: WEEK_MINS,
-    usedPercent: clampPercent(usedPercent),
-    ...(resetsAt ? { resetsAt } : {}),
-  };
-}
 
 function percentFromAmounts(used: number | null | undefined, limit: number | null | undefined) {
   if (
@@ -151,10 +129,9 @@ function makeWindow(
   };
 }
 
-/** Stream utilization is 0-1. Drop unnamed overage buckets until probed to avoid unreconcilable rows. */
+/** Stream utilization is 0-1. Per-model weekly buckets are not shown. */
 export function claudeRateLimitEventToUpdate(
   info: SDKRateLimitInfo,
-  names: ClaudeScopedLimitNames,
 ): ProviderUsageLimitsUpdate | undefined {
   const type: string | undefined = info.rateLimitType;
   if (!type || typeof info.utilization !== "number") {
@@ -164,9 +141,6 @@ export function claudeRateLimitEventToUpdate(
   const resetsAt = isoFromEpochSeconds(info.resetsAt);
   if (type in WINDOWS) {
     return { windows: [makeWindow(type, usedPercent, resetsAt)] };
-  }
-  if (type === OVERAGE_INCLUDED_EVENT_TYPE && names.overageIncluded) {
-    return { windows: [scopedWindow(names.overageIncluded, usedPercent, resetsAt)] };
   }
   return undefined;
 }
@@ -192,13 +166,10 @@ export function claudeUsageResponseToLimits(input: {
     if (!window || typeof window.utilization !== "number") continue;
     windows.push(makeWindow(id, window.utilization, isoFromString(window.resets_at)));
   }
-  // The CLI's overage allowlist currently has one model; events refer to its first entry.
+  // Per-model weekly buckets are not shown; the name only labels limit-reached messages.
   let overageIncluded: string | undefined;
   for (const entry of readModelScoped(response.rate_limits)) {
     if (typeof entry.utilization !== "number") continue;
-    windows.push(
-      scopedWindow(entry.display_name, entry.utilization, isoFromString(entry.resets_at)),
-    );
     overageIncluded ??= entry.display_name;
   }
   const spendPercent = readSpendPercent(response.rate_limits);

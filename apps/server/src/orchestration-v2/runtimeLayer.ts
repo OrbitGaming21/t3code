@@ -1,5 +1,5 @@
-import * as PromptUsageBudget from "../usage/PromptUsageBudget.ts";
-import * as PromptUsageBudgetWorker from "./PromptUsageBudgetWorker.ts";
+import * as UsageStopLine from "../usage/UsageStopLine.ts";
+import * as UsageStopLineWorker from "./UsageStopLineWorker.ts";
 import * as GuestShareService from "../guest/GuestShareService.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
@@ -153,7 +153,7 @@ const layerProviderAuthServiceProvided = ProviderAuthService.layer.pipe(
 );
 
 const layerRunExecutionServiceProvided = RunExecutionService.layer.pipe(
-  Layer.provide(PromptUsageBudget.layer),
+  Layer.provide(UsageStopLine.layer),
   Layer.provide(
     Layer.mergeAll(
       McpAppModelContext.layer,
@@ -384,9 +384,9 @@ export const layerProduction = Layer.mergeAll(
       ),
     ),
   ),
-  PromptUsageBudgetWorker.layer.pipe(
+  UsageStopLineWorker.layer.pipe(
     Layer.provide(layerOrchestratorProvided),
-    Layer.provide(PromptUsageBudget.layer),
+    Layer.provide(UsageStopLine.layer),
   ),
   layerProviderContinuationWorkerProvided,
   layerAgentSessionImporterProvided,

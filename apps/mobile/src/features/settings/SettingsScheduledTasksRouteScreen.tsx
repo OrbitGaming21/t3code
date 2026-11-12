@@ -1307,18 +1307,18 @@ function WebhookScheduleDetails({
   );
 }
 
-function PromptUsageBudgetSettings({ environmentId }: { readonly environmentId: EnvironmentId }) {
+function UsageStopLineSettings({ environmentId }: { readonly environmentId: EnvironmentId }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
   const save = useAtomCommand(serverEnvironment.updateSettings, {
-    label: "subscription ceiling per prompt",
+    label: "usage stop line",
   });
   const saved = settings?.promptUsageBudgetPercent ?? null;
   const [draft, setDraft] = useState<{ saved: number | null; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const value = draft?.saved === saved ? draft.value : saved === null ? "" : String(saved);
   const percent = value.trim() === "" ? null : Number(value);
-  const valid = percent === null || (Number.isInteger(percent) && percent >= 0 && percent <= 100);
+  const valid = percent === null || (Number.isInteger(percent) && percent >= 1 && percent <= 100);
   const commit = async () => {
     if (!valid || percent === saved || !canSave || saving) return;
     setSaving(true);
@@ -1332,7 +1332,7 @@ function PromptUsageBudgetSettings({ environmentId }: { readonly environmentId: 
   return (
     <View className="gap-2 pb-3">
       <FormField
-        label="Ceiling per prompt (%)"
+        label="Usage stop line (%)"
         value={value}
         placeholder="Off"
         keyboardType="number-pad"
@@ -1342,13 +1342,13 @@ function PromptUsageBudgetSettings({ environmentId }: { readonly environmentId: 
       <View className="gap-2 px-4">
         <Text className="text-sm text-foreground-muted">
           {valid
-            ? "Stops each prompt when reported account usage increases by this percentage. Checks every 30 seconds; reporting delays and concurrent usage can cause overshoot. Missing limits prevent starting. Clear to disable; 0 pauses subscription prompts."
-            : "Enter a whole number from 0 to 100, or clear to disable."}
+            ? "Stops running agents and holds new prompts once a subscription usage window, such as the 5-hour session or the week, reaches this percent used. Prompts can run again after the window resets. Clear to turn off."
+            : "Enter a whole number from 1 to 100, or clear to turn off."}
         </Text>
         <Button
           disabled={!valid || percent === saved || !canSave || saving}
           onPress={() => void commit()}
-          label={saving ? "Saving…" : "Save prompt ceiling"}
+          label={saving ? "Saving…" : "Save stop line"}
         />
       </View>
     </View>
@@ -1418,7 +1418,7 @@ function EnvironmentTasks({
         />
       }
     >
-      <PromptUsageBudgetSettings environmentId={environmentId} />
+      <UsageStopLineSettings environmentId={environmentId} />
       {tasks.error ? (
         <Text className="p-4 text-base text-danger-foreground">{tasks.error}</Text>
       ) : !tasks.data ? (

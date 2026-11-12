@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-export function PromptUsageBudgetSettings({
+export function UsageStopLineSettings({
   environmentId,
   compact = false,
   inline = false,
@@ -19,13 +19,13 @@ export function PromptUsageBudgetSettings({
 }) {
   const settings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
   const canSave = useAtomValue(serverEnvironment.updateSettings.permissionAtom(environmentId));
-  const save = useAtomCommand(serverEnvironment.updateSettings, "subscription ceiling per prompt");
+  const save = useAtomCommand(serverEnvironment.updateSettings, "usage stop line");
   const saved = settings?.promptUsageBudgetPercent ?? null;
   const [draft, setDraft] = useState<{ saved: number | null; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const value = draft?.saved === saved ? draft.value : saved === null ? "" : String(saved);
   const percent = value.trim() === "" ? null : Number(value);
-  const valid = percent === null || (Number.isInteger(percent) && percent >= 0 && percent <= 100);
+  const valid = percent === null || (Number.isInteger(percent) && percent >= 1 && percent <= 100);
   const changed = valid && percent !== saved;
   const commit = async () => {
     if (!changed || !canSave || saving) return;
@@ -39,14 +39,14 @@ export function PromptUsageBudgetSettings({
   };
   return (
     <div className={inline ? "flex items-center gap-2" : "space-y-1"}>
-      <Label>Default ceiling per prompt</Label>
+      <Label>Usage stop line</Label>
       <div className="flex items-center gap-2">
         <div className="w-20">
           <Input
             size="default"
-            aria-label="Subscription ceiling per prompt percent"
+            aria-label="Usage stop line percent"
             type="number"
-            min={0}
+            min={1}
             max={100}
             step={1}
             placeholder="Off"
@@ -72,8 +72,8 @@ export function PromptUsageBudgetSettings({
       {!valid || !compact ? (
         <p className="text-muted-foreground">
           {!valid
-            ? "Enter 0–100, or clear to disable."
-            : "Stops each prompt when reported account usage increases by this percentage of a quota window. Checks every 30 seconds; reporting delays and concurrent account activity can cause overshoot. Missing limits prevent a prompt from starting. Clear to disable; 0 pauses subscription prompts."}
+            ? "Enter 1–100, or clear to turn off."
+            : "Stops running agents and holds new prompts once a subscription usage window, such as the 5-hour session or the week, reaches this percent used. Prompts can run again after the window resets. Clear to turn off."}
         </p>
       ) : null}
     </div>

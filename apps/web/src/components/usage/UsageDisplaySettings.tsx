@@ -17,7 +17,7 @@ const SECTIONS: Record<UsageDisplaySection, string> = {
   limits: "Usage & resets",
   tokens: "Token costs",
   tasks: "Scheduled tasks",
-  ceiling: "Ceiling per prompt",
+  ceiling: "Usage stop line",
 };
 const SIZES = { compact: "Small", comfortable: "Medium", large: "Large" };
 

@@ -1,4 +1,4 @@
-import { PromptUsageBudgetSettings } from "../usage/PromptUsageBudgetSettings";
+import { UsageStopLineSettings } from "../usage/UsageStopLineSettings";
 import { useAtomValue } from "@effect/atom-react";
 import { connectionStatusTitle } from "@t3tools/client-runtime/connection";
 import * as Option from "effect/Option";
@@ -648,7 +648,7 @@ function ScheduledTaskEnvironmentSection({
       }
     >
       <div className="px-4 py-3">
-        <PromptUsageBudgetSettings environmentId={environment.environmentId} />
+        <UsageStopLineSettings environmentId={environment.environmentId} />
       </div>
       {!connected ? (
         <SettingsRow

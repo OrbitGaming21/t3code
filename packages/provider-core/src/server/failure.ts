@@ -87,7 +87,7 @@ function curatedCauseMessages(cause: unknown): {
       switch (tag) {
         case "ContextHandoffBudgetError":
           return { known: new ContextHandoffBudgetError().message, category: categoryMessage() };
-        case "PromptUsageBudgetError":
+        case "UsageStopLineError":
         case "AcpModelSelectionError":
         case "ClaudeBackgroundWorkBlocksQueryReplacementError":
         case "ClaudeAppendSystemPromptFileError":

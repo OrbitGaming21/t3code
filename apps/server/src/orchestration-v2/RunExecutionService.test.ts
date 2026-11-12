@@ -1,4 +1,4 @@
-import * as PromptUsageBudget from "../usage/PromptUsageBudget.ts";
+import * as UsageStopLine from "../usage/UsageStopLine.ts";
 import { assert, it } from "@effect/vitest";
 import {
   CheckpointScopeId,
@@ -65,7 +65,7 @@ const layerTurnItemPositionsTest = Layer.mock(TurnItemPositionStore.TurnItemPosi
 
 const layerRunExecutionTest = RunExecutionService.layer.pipe(
   Layer.provide(
-    Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+    Layer.mock(UsageStopLine.UsageStopLine)({
       begin: () => Effect.void,
       end: () => Effect.void,
       poll: Effect.succeed([]),
@@ -887,7 +887,7 @@ it.effect("passes the thread's MCP app context to the provider under a safe key"
     Effect.provide(
       RunExecutionService.layer.pipe(
         Layer.provide(
-          Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+          Layer.mock(UsageStopLine.UsageStopLine)({
             begin: () => Effect.void,
             end: () => Effect.void,
             poll: Effect.succeed([]),
@@ -935,7 +935,7 @@ it.effect("fails the run when its ownership check cannot be read before calling 
     const providerInstanceId = ProviderInstanceId.make("codex");
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),
@@ -1144,7 +1144,7 @@ it.effect("starts the provider when checkpoint baseline capture fails", () =>
     >([]);
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),
@@ -1271,7 +1271,7 @@ it.effect.each(["failure", "interruption", "stale-attempt", "start-guard"] as co
       const writes = yield* Ref.make<ReadonlyArray<ReadonlyArray<OrchestrationV2DomainEvent>>>([]);
       const layerTest = RunExecutionService.layer.pipe(
         Layer.provide(
-          Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+          Layer.mock(UsageStopLine.UsageStopLine)({
             begin: () => Effect.void,
             end: () => Effect.void,
             poll: Effect.succeed([]),
@@ -1450,7 +1450,7 @@ it.effect("ingests new member threads of an owned child after the root turn term
     const origins = yield* Ref.make<ReadonlyArray<readonly [string, unknown]>>([]);
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),
@@ -1706,7 +1706,7 @@ it.effect("ends a nested native subagent and its thread when the root run is int
     const finalized = yield* Deferred.make<ReadonlyArray<OrchestrationV2DomainEvent>>();
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),
@@ -2056,7 +2056,7 @@ it.effect(
       const ingestionDone = yield* Deferred.make<void>();
       const layerTest = RunExecutionService.layer.pipe(
         Layer.provide(
-          Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+          Layer.mock(UsageStopLine.UsageStopLine)({
             begin: () => Effect.void,
             end: () => Effect.void,
             poll: Effect.succeed([]),
@@ -3091,7 +3091,7 @@ function captureRootRunTermination(input: {
       });
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),
@@ -3615,7 +3615,7 @@ function runBackgroundItemScenario(
     );
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
-        Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+        Layer.mock(UsageStopLine.UsageStopLine)({
           begin: () => Effect.void,
           end: () => Effect.void,
           poll: Effect.succeed([]),

@@ -1,4 +1,4 @@
-import * as PromptUsageBudget from "../../usage/PromptUsageBudget.ts";
+import * as UsageStopLine from "../../usage/UsageStopLine.ts";
 import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -378,7 +378,7 @@ export function layerWithRegistry<Error>(
   );
   const layerRunExecutionServiceProvided = RunExecutionService.layer.pipe(
     Layer.provide(
-      Layer.mock(PromptUsageBudget.PromptUsageBudget)({
+      Layer.mock(UsageStopLine.UsageStopLine)({
         begin: () => Effect.void,
         end: () => Effect.void,
         poll: Effect.succeed([]),

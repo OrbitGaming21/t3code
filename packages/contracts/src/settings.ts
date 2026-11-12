@@ -1135,7 +1135,7 @@ export const StorageCleanupSettings = Schema.Struct({
 });
 export type StorageCleanupSettings = typeof StorageCleanupSettings.Type;
 
-/** `percent: null` turns the ceiling off for one thread. */
+/** `percent: null` turns the usage stop line off for one thread. */
 export const PromptUsageBudgetOverride = Schema.Struct({
   percent: Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
 });
@@ -1295,6 +1295,8 @@ export const ServerSettings = Schema.Struct({
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
+  // The usage stop line: prompts stop once a subscription window reaches this percent used.
+  // Stored under its original per-prompt-budget name so saved values carry over.
   promptUsageBudgetPercent: Schema.NullOr(
     Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   ).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
@@ -1613,7 +1615,7 @@ export const ServerSettingsPatch = Schema.Struct({
   promptUsageBudgetPercent: Schema.optionalKey(
     Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))),
   ),
-  /** Per entry: an override replaces, `null` restores the environment ceiling. */
+  /** Per entry: an override replaces, `null` restores the environment stop line. */
   promptUsageBudgetByThread: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, Schema.NullOr(PromptUsageBudgetOverride)),
   ),

@@ -166,6 +166,6 @@ footer { margin-top: calc(16px * var(--spacing-scale)); color: var(--muted); fon
 <body>
 <header><div><h1>T3 Code</h1><p class="environment">${escapeHtml(summary.environmentLabel ?? "Usage overview")}</p></div><div><a class="open" href="https://t3-menu.invalid/open-app">Open app ↗</a><br><a class="open" aria-label="Usage display settings" href="https://t3-menu.invalid/open-usage-settings">⚙ Display settings</a></div></header>
 <main>${projectContent}${content}</main>
-<footer>Subscription usage · Each prompt has its own ceiling</footer>
+<footer>Subscription usage · Agents stop at your usage stop line</footer>
 </body></html>`;
 }

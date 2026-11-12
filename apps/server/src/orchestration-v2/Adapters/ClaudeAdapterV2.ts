@@ -7877,7 +7877,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             const names = adapterOptions.scopedLimitNames
               ? yield* Ref.get(adapterOptions.scopedLimitNames)
               : { overageIncluded: undefined };
-            const update = claudeRateLimitEventToUpdate(rateLimitInfo, names);
+            const update = claudeRateLimitEventToUpdate(rateLimitInfo);
             const now = yield* DateTime.now;
             if (update && adapterOptions.onUsageLimits) {
               yield* adapterOptions.onUsageLimits({

@@ -214,14 +214,10 @@ it.effect("keys terminal failure items by provider turn across retries and fallb
   }).pipe(Effect.provide(IdAllocator.layer)),
 );
 
-it("preserves the actionable reason a subscription budget prevents startup", () => {
+it("preserves the actionable reason the usage stop line prevents startup", () => {
+  const message = "Stopped at your usage stop line: Session usage is 91%, at or above 90%.";
   assert.equal(
-    makeProviderFailure({
-      cause: {
-        _tag: "PromptUsageBudgetError",
-        message: "The per-prompt subscription budget is 0%.",
-      },
-    }).message,
-    "The per-prompt subscription budget is 0%.",
+    makeProviderFailure({ cause: { _tag: "UsageStopLineError", message } }).message,
+    message,
   );
 });

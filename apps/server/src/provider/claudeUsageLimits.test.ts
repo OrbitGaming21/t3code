@@ -3,10 +3,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { claudeRateLimitEventToUpdate, claudeUsageResponseToLimits } from "./claudeUsageLimits.ts";
 
 const checkedAt = "2026-07-18T10:00:00.000Z";
-const noNames = { overageIncluded: undefined } as const;
 
 describe("claudeUsageResponseToLimits", () => {
-  it("maps the session, weekly, and model-scoped weekly windows", () => {
+  it("maps the session and weekly windows and leaves out per-model weekly windows", () => {
     expect(
       claudeUsageResponseToLimits({
         checkedAt,
@@ -49,14 +48,6 @@ describe("claudeUsageResponseToLimits", () => {
             kind: "weekly",
             label: "Weekly",
             usedPercent: 18.4,
-            windowDurationMins: 10080,
-            resetsAt: "2026-07-24T08:59:00.000Z",
-          },
-          {
-            id: "seven_day_fable",
-            kind: "weekly",
-            label: "Weekly · Fable",
-            usedPercent: 73,
             windowDurationMins: 10080,
             resetsAt: "2026-07-24T08:59:00.000Z",
           },
@@ -226,15 +217,12 @@ describe("claudeUsageResponseToLimits", () => {
 describe("claudeRateLimitEventToUpdate", () => {
   it("scales the 0–1 utilization and epoch-second reset onto the probe's window id", () => {
     expect(
-      claudeRateLimitEventToUpdate(
-        {
-          status: "allowed_warning",
-          rateLimitType: "seven_day",
-          utilization: 0.85,
-          resetsAt: 1_784_000_000,
-        },
-        noNames,
-      ),
+      claudeRateLimitEventToUpdate({
+        status: "allowed_warning",
+        rateLimitType: "seven_day",
+        utilization: 0.85,
+        resetsAt: 1_784_000_000,
+      }),
     ).toEqual({
       windows: [
         {
@@ -249,23 +237,13 @@ describe("claudeRateLimitEventToUpdate", () => {
     });
   });
 
-  it("lands the streamed overage-included bucket on the row the probe named", () => {
-    const event = {
-      status: "allowed",
-      rateLimitType: "seven_day_overage_included" as never,
-      utilization: 0.4,
-    } as const;
-    expect(claudeRateLimitEventToUpdate(event, noNames)).toBeUndefined();
-    expect(claudeRateLimitEventToUpdate(event, { overageIncluded: "Fable" })).toEqual({
-      windows: [
-        {
-          id: "seven_day_fable",
-          kind: "weekly",
-          label: "Weekly · Fable",
-          usedPercent: 40,
-          windowDurationMins: 10080,
-        },
-      ],
-    });
+  it("ignores streamed per-model weekly buckets", () => {
+    expect(
+      claudeRateLimitEventToUpdate({
+        status: "allowed",
+        rateLimitType: "seven_day_overage_included",
+        utilization: 0.4,
+      }),
+    ).toBeUndefined();
   });
 });

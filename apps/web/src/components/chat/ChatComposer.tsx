@@ -1,5 +1,5 @@
 import { ChatBillingControl } from "./ChatBillingControl";
-import { ChatCeilingControl } from "./ChatCeilingControl";
+import { ChatStopLineControl } from "./ChatStopLineControl";
 import { chatBillingSource } from "./chatBilling";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { insertAttachmentReferencesForDraft } from "./composerAttachmentReferences";
@@ -3498,7 +3498,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 onSelect={onProviderModelSelect}
                 getDisabledReason={getModelDisabledReason}
               />
-              <ChatCeilingControl
+              <ChatStopLineControl
                 key={routeThreadRef.threadId}
                 environmentId={environmentId}
                 threadId={routeThreadRef.threadId}
@@ -3928,7 +3928,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       ? null
                       : composerControls}
                   {!chatStyle && !composerControlsCollapsed ? (
-                    <ChatCeilingControl
+                    <ChatStopLineControl
                       key={routeThreadRef.threadId}
                       environmentId={environmentId}
                       threadId={routeThreadRef.threadId}
